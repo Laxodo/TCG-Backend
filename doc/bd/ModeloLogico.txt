@@ -1,0 +1,33 @@
+Usuario(id, nombre, contrasenya, email, dinero, direccion, intercambios) 
+    PK: id   
+    VNN: contrasenya, email, dinero, direccion, intercambios
+
+Cartas(id, nombre, precio, psa, rareza, frontcard, backcard, venta, id_expansion)
+    PK: id
+    FK: id_expansion -> Expansion
+    VNN: nombre, precio, rareza, frontcard, backcard, venta
+
+Carta_pertenece_a_Usuario(id_carta, id_usuario)
+	PK: id_carta, id_usuario
+	FK: id_carta —> Carta
+    FK: id_usuario —> Usuario
+
+Expansion(id, nombre, anyo, id_generacion)
+    PK: id
+    FK: id_generacion -> Generacion
+    VNN: nombre, anyo
+
+Generación(id, nombre, anyo)
+    PK: id
+    VNN: anyo
+
+Transacción(id, fecha, precio)
+    PK: id
+    VNN: fecha, precio
+
+Se_Intercambia(id_carta, id_usuario, id_transaccion)
+	PK: id_carta, id_usuario, id_transaccion
+	FK: id_carta -> Carta
+	FK: id_usuario -> Usuario
+	FK: id_transaccion -> Transaccion
+
