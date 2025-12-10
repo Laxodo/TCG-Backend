@@ -23,13 +23,14 @@ async def create_user(userIn: UserIn):
 
     #TODO: terminar USerDB
     insert_user(UserDB(
+        id = 0
         name = userIn.name,
         username = userIn.username,
         password = userIn.password,
         email = userIn.email,
-        money = userIn.money,
+        money = 0,
         address = userIn.address,
-        exchanges = userIn.exchange
+        exchanges = 0
     ))
 
 @router.post(
@@ -47,7 +48,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             detail="Username/password incorrect"
         )
 
-    userFound = next((u for u in users if u.username == username), None)
+    userFound = get_user_by_username(username)
 
     if not userFound or not verify_password(password, userFound.password):
         raise HTTPException(

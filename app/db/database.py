@@ -25,7 +25,7 @@ class UserDB(BaseModel):
 def insert_user(user: UserDB) -> id:
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
-            sql = "insert into users (name, username, password) values (?, ?, ?)"
+            sql = "insert into user (name, username, password) values (?, ?, ?)"
             values = (user.name, user.username, user.password)
             cursor.execute(sql, values)
             conn.commit()
@@ -35,11 +35,10 @@ def insert_user(user: UserDB) -> id:
 def get_user_by_username(username: str) -> UserDB | None:
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
-            sql = "select username from users where username like ?"
-            cursor.execute(sql, username)
+            sql = "select username from user where username like ?"
+            cursor.execute(sql, (username, ))
             usernameDB: str | None = None
             for row in cursor:
                  usernameDB = row[0]
             conn.commit()
             return usernameDB
-

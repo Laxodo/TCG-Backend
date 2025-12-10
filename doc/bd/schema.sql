@@ -1,67 +1,68 @@
-CREATE TABLE usuario(
+CREATE TABLE user(
     id INT NOT NULL PRIMARY KEY,
-    nombre VARCHAR(50) NOT NULL,
-    contrasenya VARCHAR(50) NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    username VARCHAR(50) NOT NULL,
+    password VARCHAR(50) NOT NULL,
     email VARCHAR(50) NOT NULL,
-    dinero DECIMAL(10, 2) NOT NULL,
-    direccion VARCHAR(50) NOT NULL,
-    intercambios INT NOT NULL
+    money DECIMAL(10, 2) NOT NULL,
+    address VARCHAR(50) NOT NULL,
+    exanges INT NOT NULL
 );
 
-CREATE TABLE carta(
+CREATE TABLE card(
     id INT NOT NULL PRIMARY KEY,
-    nombre VARCHAR(50) NOT NULL,
-    precio DECIMAL(10, 2) NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
     psa DECIMAL(3,1),
-    rareza VARCHAR(50) NOT NULL,
+    rarity VARCHAR(50) NOT NULL,
     frontcard VARCHAR(50) NOT NULL,
     backcard VARCHAR(50) NOT NULL,
-    venta BOOLEAN NOT NULL
+    saled BOOLEAN NOT NULL
 );
 
-CREATE TABLE carta_usuario(
+CREATE TABLE user_card(
     id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
-    id_carta INT NOT NULL,
-    id_usuario INT NOT NULL,
-    FOREIGN KEY (id_carta) REFERENCES carta(id),
-    FOREIGN KEY (id_usuario) REFERENCES usuario(id),
-    CONSTRAINT U_CARTA_USUARIO UNIQUE (id_carta, id_usuario)
+    id_card INT NOT NULL,
+    id_user INT NOT NULL,
+    FOREIGN KEY (id_card) REFERENCES card(id),
+    FOREIGN KEY (id_user) REFERENCES user(id),
+    CONSTRAINT U_USER_CARD UNIQUE (id_card, id_user)
 );
 
 CREATE TABLE expansion(
     id INT NOT NULL PRIMARY KEY,
-    id_carta INT,
-    nombre VARCHAR(50) NOT NULL,
-    año YEAR NOT NULL,
-    FOREIGN KEY (id_carta) REFERENCES carta(id),
-    CONSTRAINT U_EXPANSION UNIQUE (id_carta)
+    id_card INT,
+    name VARCHAR(50) NOT NULL,
+    year YEAR NOT NULL,
+    FOREIGN KEY (id_card) REFERENCES card(id),
+    CONSTRAINT U_EXPANSION UNIQUE (id_card)
 );
 
-CREATE TABLE generacion(
+CREATE TABLE generation(
     id INT NOT NULL PRIMARY KEY,
     id_expansion INT,
-    nombre VARCHAR(50) NOT NULL,
-    año YEAR NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    year YEAR NOT NULL,
     FOREIGN KEY (id_expansion) REFERENCES expansion(id),
-    CONSTRAINT U_GENERACION UNIQUE (id_expansion)
+    CONSTRAINT U_GENERATION UNIQUE (id_expansion)
 );
 
-CREATE TABLE transaccion(
+CREATE TABLE transaction(
     id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
-    id_carta INT,
-    fecha DATE NOT NULL,
-    precio DECIMAL(10, 2) NOT NULL,
-    FOREIGN KEY (id_carta) REFERENCES carta(id),
-    CONSTRAINT U_TRANSACCION UNIQUE (id_carta)
+    id_card INT,
+    date DATE NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    FOREIGN KEY (id_card) REFERENCES card(id),
+    CONSTRAINT U_TRANSACTION UNIQUE (id_card)
 );
 
 CREATE TABLE se_intercambia(    
-    id_carta INT NOT NULL,
-    id_usuario INT NOT NULL,
-    id_transaccion INT NOT NULL,
-    PRIMARY KEY (id_carta, id_usuario, id_transaccion),
-    FOREIGN KEY (id_carta) REFERENCES carta(id),
-    FOREIGN KEY (id_usuario) REFERENCES usuario(id),
-    FOREIGN KEY (id_transaccion) REFERENCES transaccion(id),
-    CONSTRAINT U_SE_INTERCAMBIA UNIQUE (id_carta, id_usuario, id_transaccion)
+    id_card INT NOT NULL,
+    id_user INT NOT NULL,
+    id_transaction INT NOT NULL,
+    PRIMARY KEY (id_card, id_user, id_transaction),
+    FOREIGN KEY (id_card) REFERENCES card(id),
+    FOREIGN KEY (id_user) REFERENCES user(id),
+    FOREIGN KEY (id_transaction) REFERENCES transaction(id),
+    CONSTRAINT U_SE_INTERCAMBIA UNIQUE (id_card, id_user, id_transaction)
 );
