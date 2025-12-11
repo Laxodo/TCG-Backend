@@ -1,33 +1,41 @@
-Usuario(id, nombre, contrasenya, email, dinero, direccion, intercambios) 
-    PK: id   
-    VNN: contrasenya, email, dinero, direccion, intercambios
-
-Cartas(id, nombre, precio, psa, rareza, frontcard, backcard, venta, id_expansion)
+User(id, name, username, password, email, money, address, exchanges)
     PK: id
-    FK: id_expansion -> Expansion
-    VNN: nombre, precio, rareza, frontcard, backcard, venta
+    VNN: name, username, password, email, money
 
-Carta_pertenece_a_Usuario(id_carta, id_usuario)
-	PK: id_carta, id_usuario
-	FK: id_carta —> Carta
-    FK: id_usuario —> Usuario
-
-Expansion(id, nombre, anyo, id_generacion)
+Generation(id, name, year)
     PK: id
-    FK: id_generacion -> Generacion
-    VNN: nombre, anyo
+    VNN: name, year
 
-Generación(id, nombre, anyo)
+Expansion(id, name, year, id_generation)
     PK: id
-    VNN: anyo
+    VNN: name, year
+    FK: id_generation -> Generation(id)
 
-Transacción(id, fecha, precio)
+Card(id, name, rarity, frontcard, backcard, id_expansion)
     PK: id
-    VNN: fecha, precio
+    VNN: name, rarity, frontcard, backcard
+    FK: id_expansion -> Expansion(id)
 
-Se_Intercambia(id_carta, id_usuario, id_transaccion)
-	PK: id_carta, id_usuario, id_transaccion
-	FK: id_carta -> Carta
-	FK: id_usuario -> Usuario
-	FK: id_transaccion -> Transaccion
+User_card(id_card, id_user, price, psa, sold)
+    PK: id_card, id_user
+    VNN: price
+    FK: id_card -> Card(id)
+    FK: id_user -> User(id)
+
+Transaction(id, id_user_card, id_from, id_to, date, price, type)
+    PK: id
+    VNN: date, type
+    FK: id_user_card -> Card_user(id_card, id_user)
+    FK: id_from -> User(id)
+    FK: id_to -> User(id)
+
+Trade(id, id_user_card_offer, id_user_card_demand, id_user_offer, id_user_demand, id_transaction_offer, id_transaction_demand, date)
+    PK: id
+    VNN: date
+    FK: id_user_card_offer -> Card_user(id_card, id_user)
+    FK: id_user_card_demand -> Card_user(id_card, id_user)
+    FK: id_user_offer -> User(id)
+    FK: id_user_demand -> User(id)
+    FK: id_transaction_offer -> Transaction(id)
+    FK: id_transaction_demand -> Transaction(id)
 
