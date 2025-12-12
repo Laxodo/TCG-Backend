@@ -10,7 +10,7 @@ db_config = {
     'database': 'mundo'
 }
 
-
+# =============== USER ===============
 class UserDB(BaseModel):
     id: int | None = None
     username: str
@@ -80,3 +80,30 @@ def get_users() -> list[UserDB]:
                     )
                 )
     return lista
+
+# TODO: terminar los que quedan
+
+# =============== CARD ===============
+
+
+
+# =============== EXPANSION ===============
+
+
+
+# =============== GENERATION ===============
+
+
+
+# =============== USER_CARD ===============
+
+
+
+# =============== TRANSACTION ===============
+
+
+
+# =============== TRADE ===============
+
+
+
