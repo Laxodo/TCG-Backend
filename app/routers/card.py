@@ -1,6 +1,6 @@
 from os import name
 from app.models import CardBase, CardOut
-from app.db.database import CardDB, insert_card, get_card_by_name, get_cards
+from app.db.database import CardDB, insert_card, get_card_by_name, get_cards, get_users
 from fastapi import APIRouter, status, HTTPException, Depends
 from app.auth.auth import Token, decode_token, oauth2_scheme, TokenData
 
@@ -11,27 +11,27 @@ router = APIRouter(
 
 
 @router.post("/", status_code = status.HTTP_201_CREATED)
-async def create_card(CardBase: CardBase):
-    CardDB = get_card_by_name(CardBase.name)
-    if CardDB:
+async def create_card(cardBase: CardBase):
+    cardDB = get_card_by_name(cardBase.name)
+    if cardDB:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Card alredy exists"
         )
     insert_card(CardDB(
-        id_expansion = CardBase.id_expansion,
-        name = CardBase.name,
-        rarity = CardBase.rarity,
-        frontcard = CardBase.frontcard,
-        backcard = CardBase.backcard
+        id_expansion = cardBase.id_expansion,
+        name = cardBase.name,
+        rarity = cardBase.rarity,
+        frontcard = cardBase.frontcard,
+        backcard = cardBase.backcard
     ))
     
 
 @router.get("/", response_model = list[CardOut], status_code = status.HTTP_200_OK)
-async def get_cards(token: str = Depends(oauth2_scheme)):
+async def get_all_cards(token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
-    if data.username not in [u.username for u in get_cards()]:
+    if data.username not in [u.username for u in get_users()]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden."
@@ -43,7 +43,8 @@ async def get_cards(token: str = Depends(oauth2_scheme)):
 @router.get("/{id}", status_code = status.HTTP_200_OK)
 async def get_card_by_id(id: int, token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
-    if data.username not in [u.username for u in get_cards()]:
+
+    if data.username not in [u.username for u in get_users()]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden.",
