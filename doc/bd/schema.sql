@@ -1,5 +1,5 @@
 CREATE TABLE user(
-    id CHAR(64) NOT NULL PRIMARY KEY,
+    id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(50) NOT NULL,
     username VARCHAR(50) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
@@ -9,9 +9,23 @@ CREATE TABLE user(
     exchanges INT DEFAULT 0
 );
 
+CREATE TABLE generation(
+    id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(50) NOT NULL,
+    year YEAR NOT NULL
+);
+
+CREATE TABLE expansion(
+    id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    id_generation INT NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    year YEAR NOT NULL,
+    FOREIGN KEY (id_generation) REFERENCES generation(id)
+);
+
 CREATE TABLE card(
-    id CHAR(64) NOT NULL PRIMARY KEY,
-    id_expansion CHAR(64) NOT NULL,
+    id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    id_expansion INT NOT NULL,
     name VARCHAR(50) NOT NULL,
     rarity VARCHAR(50) NOT NULL,
     frontcard VARCHAR(255) NOT NULL,
@@ -20,9 +34,9 @@ CREATE TABLE card(
 );
 
 CREATE TABLE user_card(
-    id CHAR(64) NOT NULL PRIMARY KEY,
-    id_card CHAR(64) NOT NULL,
-    id_user CHAR(64) NOT NULL,
+    id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    id_card INT NOT NULL,
+    id_user INT NOT NULL,
     price DECIMAL(10, 2),
     psa DECIMAL(3,1),
     sold BOOLEAN DEFAULT FALSE,
@@ -30,25 +44,11 @@ CREATE TABLE user_card(
     FOREIGN KEY (id_user) REFERENCES user(id)
 );
 
-CREATE TABLE expansion(
-    id CHAR(64) NOT NULL PRIMARY KEY,
-    id_generation CHAR(64) NOT NULL,
-    name VARCHAR(50) NOT NULL,
-    year YEAR NOT NULL,
-    FOREIGN KEY (id_generation) REFERENCES generation(id)
-);
-
-CREATE TABLE generation(
-    id CHAR(64) NOT NULL PRIMARY KEY,
-    name VARCHAR(50) NOT NULL,
-    year YEAR NOT NULL
-);
-
 CREATE TABLE transaction(
     id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
-    id_user_card CHAR(64) NOT NULL,
-    id_from CHAR(64) NOT NULL,
-    id_to CHAR(64) NOT NULL,
+    id_user_card INT NOT NULL,
+    id_from INT NOT NULL,
+    id_to INT NOT NULL,
     date DATETIME NOT NULL,
     price DECIMAL(10, 2),
     type VARCHAR(20) NOT NULL,
@@ -59,10 +59,10 @@ CREATE TABLE transaction(
 
 CREATE TABLE trade(
     id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
-    id_user_card_offer CHAR(64) NOT NULL,
-    id_user_card_demand CHAR(64) NOT NULL,
-    id_user_offer CHAR(64) NOT NULL,
-    id_user_demand CHAR(64) NOT NULL,
+    id_user_card_offer INT NOT NULL,
+    id_user_card_demand INT NOT NULL,
+    id_user_offer INT NOT NULL,
+    id_user_demand INT NOT NULL,
     id_transaction_offer INT NOT NULL,
     id_transaction_demand INT NOT NULL,
     date DATETIME NOT NULL,
