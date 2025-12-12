@@ -81,14 +81,73 @@ def get_users() -> list[UserDB]:
                 )
     return lista
 
-# TODO: terminar los que quedan
-
 # =============== CARD ===============
+class CardDB(BaseModel):
+    id: int | None = None
+    id_expansion: int
+    name: str
+    rarity: str
+    frontcard: str | None = None
+    backcard: str | None = None
 
 
+def insert_card(card: CardDB) -> id:
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql = "insert into card (id_expansion, name, rarity, frontcard, backcard) values (?, ?, ?, ?, ?)"
+            values = (
+                card.id_expansion,
+                card.name,
+                card.rarity,
+                card.frontcard,
+                card.backcard)
+            cursor.execute(sql, values)
+            conn.commit()
+            return cursor.lastrowid
 
+
+def get_card_by_name(name: str) -> CardDB | None:
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql: str = "select * from card where name = ?"
+            cursor.execute(sql, (name, ))
+            row: list = cursor.fetchone()
+            if row is None:
+                return None
+            return CardDB(
+                id=row[0],
+                id_expansion=row[1],
+                name=row[2],
+                rarity=row[3],
+                frontcard=row[4],
+                backcard=row[5]
+            )
+
+
+def get_cards() -> list[CardDB]:
+    lista: list[CardDB] = []
+    with mariadb.connect(**db_config) as conn:
+        with conn.cursor() as cursor:
+            sql: str = "select * from card"
+            cursor.execute(sql)
+            rows: list = cursor.fetchall()
+            for row in rows:
+                lista.append(
+                    CardDB(
+                        id=row[0],
+                        id_expansion=row[1],
+                        name=row[2],
+                        rarity=row[3],
+                        frontcard=row[4],
+                        backcard=row[5]
+                    )
+                )
+    return lista
+# TODO: terminar los que quedan
 # =============== EXPANSION ===============
-
+'''class Expansion(BaseModel):
+    id: int | None = None
+    id_generation'''
 
 
 # =============== GENERATION ===============
