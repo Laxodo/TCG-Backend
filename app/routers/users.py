@@ -1,13 +1,13 @@
 from app.models import UserIn, UserOut, UserBase
 
-from app.db.database import UserDB, insert_user, get_user_by_username
+from app.db.database import UserDB, insert_user, get_user_by_username, get_users
 from fastapi import APIRouter, status, HTTPException, Header, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from app.auth.auth import Token, create_access_token, verify_password, get_hash_password, decode_token, oauth2_scheme, TokenData
 
 router = APIRouter(
     prefix="/users",
-    tags=["Users"]   
+    tags=["users"]   
 )
 
 @router.post("/singup", status_code = status.HTTP_201_CREATED)
@@ -18,20 +18,16 @@ async def create_user(userIn: UserIn):
             status_code=status.HTTP_409_CONFLICT,
             detail="Username already exists"
         )
-
-    #add_user(userIn)
-
-    #TODO: terminar USerDB
     insert_user(UserDB(
-        id = 0
         name = userIn.name,
         username = userIn.username,
-        password = userIn.password,
+        password = get_hash_password(userIn.password),
         email = userIn.email,
         money = 0,
         address = userIn.address,
         exchanges = 0
     ))
+
 
 @router.post(
     "/login", 
@@ -74,20 +70,24 @@ async def get_all_users(token: str = Depends(oauth2_scheme)):
     
     data: TokenData = decode_token(token)
     
-    if data.username not in [u.username for u in users]:
+    if data.username not in [u.username for u in get_users()]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden.",
-        ) 
+        )
     
-    return [UserOut(id = user.id, name = user.name, username = user.username, exchanges = user.exchanges) for user in users]
+    return [UserOut(id = user.id, name = user.name, username = user.username, exchanges = user.exchanges) for user in get_users()]
 
 
 @router.get("/{id}", status_code = status.HTTP_200_OK)
-async def get_user_by_id(id: int): 
-    return [UserOut(id = user.id, name = user.name, username = user.username, exchanges = user.exchanges) for user in users if user.id == id]
+async def get_user_by_id(id: int, token: str = Depends(oauth2_scheme)):
 
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail=f"User {id} does not exists"
-    )
+    data: TokenData = decode_token(token)
+
+    if data.username not in [u.username for u in get_users()]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden.",
+        )
+ 
+    return [UserOut(id = user.id, name = user.name, username = user.username, exchanges = user.exchanges) for user in get_users() if user.id == id]
