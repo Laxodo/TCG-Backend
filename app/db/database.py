@@ -42,7 +42,7 @@ def insert_user(user: UserDB) -> id:
 def get_user_by_username(username: str) -> UserDB | None:
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
-            sql: str = "select * from user where username = ?"
+            sql: str = "select id, name, username, password, email, money, address, exchanges from user where username = ?"
             cursor.execute(sql, (username, ))
             row: list = cursor.fetchone()
             if row is None:
@@ -63,7 +63,7 @@ def get_users() -> list[UserDB]:
     lista: list[UserDB] = []
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
-            sql: str = "select * from user"
+            sql: str = "select id, name, username, password, email, money, address, exchanges from user"
             cursor.execute(sql)
             rows: list = cursor.fetchall()
             for row in rows:
@@ -109,7 +109,7 @@ def insert_card(card: CardDB) -> id:
 def get_card_by_name(name: str) -> CardDB | None:
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
-            sql: str = "select * from card where name = ?"
+            sql: str = "select id, id_expansion, name, rarity, frontcard, backcard from card where name = ?"
             cursor.execute(sql, (name, ))
             row: list = cursor.fetchone()
             if row is None:
@@ -128,7 +128,7 @@ def get_cards() -> list[CardDB]:
     lista: list[CardDB] = []
     with mariadb.connect(**db_config) as conn:
         with conn.cursor() as cursor:
-            sql: str = "select * from card"
+            sql: str = "select id, id_expansion, name, rarity, frontcard, backcard from card"
             cursor.execute(sql)
             rows: list = cursor.fetchall()
             for row in rows:

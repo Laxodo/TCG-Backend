@@ -10,7 +10,7 @@ router = APIRouter(
 )
 
 
-@router.post("/", status_code = status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_card(cardBase: CardBase):
     cardDB = get_card_by_name(cardBase.name)
     if cardDB:
