@@ -10,8 +10,16 @@ router = APIRouter(
 )
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_card(cardBase: CardBase):
+@router.post("/", status_code = status.HTTP_201_CREATED)
+async def create_card(cardBase: CardBase, token: str = Depends(oauth2_scheme)):
+    data: TokenData = decode_token(token)
+
+    if data.username not in [u.username for u in get_users()]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden."
+        )
+
     cardDB = get_card_by_name(cardBase.name)
     if cardDB:
         raise HTTPException(
