@@ -40,11 +40,20 @@ class ExpansionBase(BaseModel):
     id_generacion: int
     name: str
     year: int
-# TODO: terminar los que quedan
+
+
+class ExpansionOut(ExpansionBase):
+    id: int
+
 # =============== GENERATION ===============
+class GenerationBase(BaseModel):
+    name: str
+    year: int
 
 
-
+class GenerationOut(GenerationBase):
+    id: int
+# TODO: terminar los que quedan
 # =============== USER_CARD ===============
 
 

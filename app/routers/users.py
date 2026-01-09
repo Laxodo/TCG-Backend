@@ -89,5 +89,5 @@ async def get_user_by_id(id: int, token: str = Depends(oauth2_scheme)):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden.",
         )
- 
+
     return [UserOut(id = user.id, name = user.name, username = user.username, exchanges = user.exchanges) for user in get_users() if user.id == id]

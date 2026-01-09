@@ -1,56 +1,56 @@
-from fastapi import APIRouter, status, HTTPException
-from pydantic import BaseModel
+from app.models import GenerationBase, GenerationOut
+from app.db.database import GenerationDB, insert_generation, get_generation_by_name, get_generations, get_users
+from fastapi import APIRouter, status, HTTPException, Depends
+from app.auth.auth import decode_token, oauth2_scheme, TokenData
 
 router = APIRouter(
     prefix = "/generation",
-    tags = ["generation"]
+    tags = ["Generation"]
 )
 
-class GenerationDB(BaseModel):
-    id: int
-    name: str
-    year: int
+@router.post("/", status_code=status.HTTP_201_CREATED)
+async def create_generation(genBase: GenerationBase, token: str = Depends(oauth2_scheme)):
+    data: TokenData = decode_token(token)
 
-class GenerationIn(BaseModel):
-    name: str
-    year: int
-
-generations: list[GenerationDB] = []
-
-@router.post("/", status_code = status.HTTP_201_CREATED)
-async def create_generation(GenerationIn: GenerationIn):
-    generations.append(
-        GenerationDB(
-            id = len(generations) + 1,
-            name = GenerationIn.name,
-            year = GenerationIn.year
+    if data.username not in [u.username for u in get_users()]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden."
         )
-    )
 
-@router.get("/", status_code = status.HTTP_200_OK)
-async def get_generations():
-    lista = []
-    for generation in generations:
-        lista.append(
-            {
-                "id": generation.id,
-                "name": generation.name,
-                "year": generation.year
-            }
+    genDB = get_generation_by_name(genBase.name)
+    if genDB:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Generation alredy exists."
         )
-    return lista
+    insert_generation(GenerationDB(
+        name=genBase.name,
+        year=genBase.year
+    ))
 
-@router.get("/{id}", status_code = status.HTTP_200_OK)
-async def get_generation_by_id(id: int):
-    for generation in generations:
-        if generation.id == id:
-            return {
-                "id": generation.id,
-                "name": generation.name,
-                "year": generation.year
-            }
+
+@router.get("/", response_model=list[GenerationOut], status_code=status.HTTP_200_OK)
+async def read_all_generations(token: str = Depends(oauth2_scheme)):
+    data: TokenData = decode_token(token)
+
+    if data.username not in [u.username for u in get_users()]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden."
+        )
     
-    raise HTTPException(
-        status_code = status.HTTP_404_NOT_FOUND,
-        detail = f"La carta con el id {id} no existe"
-    )
+    return [GenerationOut(id=gen.id, name=gen.name, year=gen.year) for gen in get_generations()]
+
+
+@router.get("/{id}", status_code=status.HTTP_200_OK)
+async def read_generation_by_name(name: str, token = Depends(oauth2_scheme)):
+    data: TokenData = decode_token(token)
+
+    if data.username not in [u.username for u in get_users()]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden."
+        )
+
+    return [GenerationOut(id=gen.id, name=gen.name, year=gen.year) for gen in get_generations() if gen.name == name]
