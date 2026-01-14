@@ -1,0 +1,15 @@
+services:
+  myapi:
+    build:
+      context: .
+      dockerfile: ./docker/fastapi/Dockerfile
+    ports:
+      - 8000:80
+    networks:
+      - myapi_network
+    volumes:
+      - ./app:/app/app
+
+networks:
+  myapi_network:
+    driver: bridge

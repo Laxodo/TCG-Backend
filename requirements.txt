@@ -1,0 +1,8 @@
+fastapi
+pydantic
+uvicorn
+bcrypt
+python-jose
+python-multipart
+mariadb
+sqlmodel
