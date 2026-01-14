@@ -18,15 +18,21 @@ async def create_user(userIn: UserIn):
             status_code=status.HTTP_409_CONFLICT,
             detail="Username already exists"
         )
-    insert_user(UserDB(
-        name = userIn.name,
-        username = userIn.username,
-        password = get_hash_password(userIn.password),
-        email = userIn.email,
-        money = 0,
-        address = userIn.address,
-        exchanges = 0
-    ))
+    try:
+        insert_user(UserDB(
+            name = userIn.name,
+            username = userIn.username,
+            password = get_hash_password(userIn.password),
+            email = userIn.email,
+            money = 0,
+            address = userIn.address,
+            exchanges = 0
+        ))
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid data entry"
+        )
 
 
 @router.post(
@@ -66,7 +72,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     response_model = list[UserOut],
     status_code = status.HTTP_200_OK
 )
-async def get_all_users(token: str = Depends(oauth2_scheme)):
+async def read_all_users(token: str = Depends(oauth2_scheme)):
     
     data: TokenData = decode_token(token)
     
@@ -80,7 +86,7 @@ async def get_all_users(token: str = Depends(oauth2_scheme)):
 
 
 @router.get("/{id}", status_code = status.HTTP_200_OK)
-async def get_user_by_id(id: int, token: str = Depends(oauth2_scheme)):
+async def read_user(id: int, token: str = Depends(oauth2_scheme)):
 
     data: TokenData = decode_token(token)
 

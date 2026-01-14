@@ -1,15 +1,15 @@
 from fastapi import FastAPI, status
 from pydantic import BaseModel
 from app.routers import users, card
-#from db.database import create_database_and_tables
+from app.db.database import create_database_and_tables
 
 app = FastAPI(debug=True)
 app.include_router(users.router)
 app.include_router(card.router)
 
-#@app.on_event("startup")
-#async def on_startup():
-#    create_database_and_tables()
+@app.on_event("startup")
+async def on_startup():
+    create_database_and_tables()
 
 @app.get("/")
 async def root():

@@ -32,8 +32,8 @@ def get_hash_password(plain_pw: str) -> str:
 
 def verify_password(plain_pw, hashed_pw) -> bool:
     plain_pw_bytes = plain_pw.encode("utf-8")
-    hashed_pw_bytes = hashed_pw.encode("utf-8")
-    return bcrypt.checkpw(password=plain_pw_bytes, hashed_password=hashed_pw_bytes)
+#    hashed_pw_bytes = hashed_pw.encode("utf-8")
+    return bcrypt.checkpw(password=plain_pw_bytes, hashed_password=hashed_pw)
 
 
 def create_access_token(user: UserBase) -> Token:

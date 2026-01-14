@@ -1,7 +1,8 @@
 from sqlmodel import SQLModel, create_engine, Field, Session, select
 import os
 
-DATABASE_URL = "sqlite:///app/db/data.db"
+DATABASE_URL = "sqlite///data.db"
+
 
 class UserDB(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -11,21 +12,11 @@ class UserDB(SQLModel, table=True):
     email: str = Field(index=True, unique=True)
     money: float | None = Field(default=0.0, index=True)
     address: str | None = Field(default=None, index=True)
-    exchanges: int | None = Field(default=0, index=True)
-
-
-class CardDB(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    id_expansion: int = Field(index=True)
-    name: str = Field(index=True)
-    rarity: str = Field(index=True)
-    frontcard: str = Field(index=True)
-    backcard: str = Field(index=True)
-    
+    exanges: int | None = Field(default=0, index=True)
 
 engine = create_engine(
     DATABASE_URL,
-    echo=False,
+    echo=True,
     connect_args={"check_same_thread": False}
 )
 
@@ -37,7 +28,7 @@ def insert_user(user):
         session.add(user)
         try:
             session.commit()
-        except Exception:
+        except IntegrityError:
             raise ValueError
         session.refresh(user)
 
@@ -48,7 +39,7 @@ def get_users() -> list[UserDB]:
 
 def get_user_by_username(username: str) -> UserDB:
     with Session(engine) as session:
-        users = session.exec(select(UserDB).where(UserDB.username == username)).first()
+        users = session.exec(select(UserDB)).where(UserDB.id == username).first()
         return users
 
 
@@ -57,7 +48,7 @@ def insert_card(card):
         session.add(card)
         try:
             session.commit()
-        except Exception:
+        except IntegrityError:
             raise ValueError
         session.refresh(card)
 
@@ -66,7 +57,7 @@ def get_cards() -> list[CardDB]:
         cards = session.exec(select(CardDB)).all()
         return cards
 
-def get_card_by_name(name: str) -> CardDB:
+def get_card(id: int) -> CardDB:
     with Session(engine) as session:
-        card = session.exec(select(CardDB).where(CardDB.name == name)).first()
+        card = session.exec(select(CardDB)).where(CardDB.id == id).first()
         return card
