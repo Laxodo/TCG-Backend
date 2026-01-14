@@ -1,6 +1,6 @@
 from fastapi import FastAPI, status
 from pydantic import BaseModel
-from app.routers import users, card
+from app.routers import users, card, expansions, generations
 from app.db.database import create_database_and_tables
 
 app = FastAPI(debug=True)

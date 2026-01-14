@@ -12,15 +12,6 @@ class UserDB(SQLModel, table=True):
     money: float | None = Field(default=0.0, index=True)
     address: str | None = Field(default=None, index=True)
     exchanges: int | None = Field(default=0, index=True)
-
-
-class CardDB(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    id_expansion: int = Field(index=True)
-    name: str = Field(index=True)
-    rarity: str = Field(index=True)
-    frontcard: str = Field(index=True)
-    backcard: str = Field(index=True)
     
 
 engine = create_engine(
@@ -50,10 +41,21 @@ def get_users() -> list[UserDB]:
         return users
 
 
-def get_user_by_username(username: str) -> UserDB:
+def get_user_by_username(username: str) -> UserDB | None:
     with Session(engine) as session:
         users = session.exec(select(UserDB).where(UserDB.username == username)).first()
         return users
+
+
+# =============== CARD ===============
+
+class CardDB(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    id_expansion: int = Field(index=True)
+    name: str = Field(index=True)
+    rarity: str = Field(index=True)
+    frontcard: str = Field(index=True)
+    backcard: str = Field(index=True)
 
 
 def insert_card(card):
@@ -72,119 +74,68 @@ def get_cards() -> list[CardDB]:
         return cards
 
 
-def get_card_by_name(name: str) -> CardDB:
+def get_card_by_name(name: str) -> CardDB | None:
     with Session(engine) as session:
         card = session.exec(select(CardDB).where(CardDB.name == name)).first()
         return card
 
 # =============== EXPANSION ===============
-class ExpansionDB(BaseModel):
-    id: int | None = None
-    id_generation: int
-    name: str
-    year: int
+class ExpansionDB(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    id_generation: int = Field(index=True)
+    name: str = Field(index=True)
+    year: int = Field(index=True)
 
 
-def insert_expansion(expansions: ExpansionDB) -> id:
-    with mariadb.connect(**db_config) as conn:
-        with conn.cursor() as cursor:
-            sql = "insert into expansion (id_generation, name, year) values (?, ?, ?)"
-            values = (
-                expansions.id_generation,
-                expansions.name,
-                expansions.year
-            )
-            cursor.execute(sql, values)
-            conn.commit()
-            return cursor.lastrowid
+def insert_expansion(expansion):
+    with Session(engine) as session:
+        session.add(expansion)
+        try:
+            session.commit()
+        except Exception:
+            raise ValueError
+        session.refresh(expansion)
 
 
 def get_expansion_by_name(name: str) -> ExpansionDB | None:
-    with mariadb.connect(**db_config) as conn:
-        with conn.cursor() as cursor:
-            sql: str = "select * from expansion where name = ?"
-            cursor.execute(sql, (name, ))
-            row: list = cursor.fetchone()
-            if row is None:
-                return None
-            return ExpansionDB(
-                id=row[0],
-                id_generation=row[1],
-                name=row[2],
-                year=row[3]
-            )
+    with Session(engine) as session:
+        card = session.exec(select(ExpansionDB).where(ExpansionDB.name == name)).first()
+        return card
 
 
 def get_expansions() -> list[ExpansionDB]:
-    lista: list[ExpansionDB] = []
-    with mariadb.connect(**db_config) as conn:
-        with conn.cursor() as cursor:
-            sql: str = "select * from expansion"
-            cursor.execute(sql)
-            rows: list = cursor.fetchall()
-            for row in rows:
-                lista.append(
-                    ExpansionDB(
-                        id=row[0],
-                        id_generation=row[1],
-                        name=row[2],
-                        year=row[3]
-                    )
-                )
-    return lista
+    with Session(engine) as session:
+        cards = session.exec(select(ExpansionDB)).all()
+        return cards
 
 
 # =============== GENERATION ===============
-class GenerationDB(BaseModel):
-    id: int | None = None
-    name: str
-    year: int
+class GenerationDB(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str = Field(index=True)
+    year: int = Field(index=True)
 
 
-def insert_generation(generations: GenerationDB) -> id:
-    with mariadb.connect(**db_config) as conn:
-        with conn.cursor() as cursor:
-            sql = "insert into generation (name, year) values (?, ?)"
-            values = (
-                generations.name,
-                generations.year
-            )
-            cursor.execute(sql, values)
-            conn.commit()
-            return cursor.lastrowid
+def insert_generation(generations):
+    with Session(engine) as session:
+        session.add(generations)
+        try:
+            session.commit()
+        except Exception:
+            raise ValueError
+        session.refresh(generations)
 
 
 def get_generation_by_name(name: str) -> GenerationDB | None:
-    with mariadb.connect(**db_config) as conn:
-        with conn.cursor() as cursor:
-            sql = str = "select * from generation where name = ?"
-            cursor.execute(sql, (name, ))
-            row: list = cursor.fetchone()
-            if row is None:
-                return None
-            return GenerationDB(
-                id=row[0],
-                name=row[1],
-                year=row[2]
-            )
+    with Session(engine) as session:
+        card = session.exec(select(GenerationDB).where(GenerationDB.name == name)).first()
+        return card
 
 
 def get_generations() -> list[GenerationDB]:
-    lista: list[GenerationDB] = []
-    with mariadb.connect(**db_config) as conn:
-        with conn.cursor() as cursor:
-            sql: str = "select * from generation"
-            cursor.execute(sql)
-            rows: list = cursor.fetchall()
-            for row in rows:
-                lista.append(
-                    GenerationDB(
-                        id=row[0],
-                        name=row[1],
-                        year=row[2]
-                    )
-                )
-    return lista
+    with Session(engine) as session:
+        cards = session.exec(select(GenerationDB)).all()
+        return cards
 
 
 # TODO: terminar los que quedan

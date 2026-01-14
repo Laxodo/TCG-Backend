@@ -43,8 +43,8 @@ async def read_all_expansions(token: str = Depends(oauth2_scheme)):
     
     return [ExpansionOut(id=expansion.id, id_generacion=expansion.id_generation, name=expansion.name, year=expansion.year) for expansion in get_expansions()]
 
-@router.get("/{name}", status_code=status.HTTP_200_OK)
-async def read_expansion(name: str, token: str = Depends(oauth2_scheme)):
+@router.get("/{id}", status_code=status.HTTP_200_OK)
+async def read_expansion(id: int, token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
     if data.username not in [u.username for u in get_users()]:
@@ -53,4 +53,4 @@ async def read_expansion(name: str, token: str = Depends(oauth2_scheme)):
             detail="Forbidden."
         )
     
-    return [ExpansionOut(id=expansion.id, id_generacion=expansion.id_generation, name=expansion.name, year=expansion.year) for expansion in get_expansions() if expansion.name == name]
+    return [ExpansionOut(id=expansion.id, id_generacion=expansion.id_generation, name=expansion.name, year=expansion.year) for expansion in get_expansions() if expansion.id == id]

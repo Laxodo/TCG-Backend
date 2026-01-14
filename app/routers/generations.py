@@ -44,7 +44,7 @@ async def read_all_generations(token: str = Depends(oauth2_scheme)):
 
 
 @router.get("/{id}", status_code=status.HTTP_200_OK)
-async def read_generation_by_name(name: str, token = Depends(oauth2_scheme)):
+async def read_generation_by_name(id: int, token = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
     if data.username not in [u.username for u in get_users()]:
@@ -53,4 +53,4 @@ async def read_generation_by_name(name: str, token = Depends(oauth2_scheme)):
             detail="Forbidden."
         )
 
-    return [GenerationOut(id=gen.id, name=gen.name, year=gen.year) for gen in get_generations() if gen.name == name]
+    return [GenerationOut(id=gen.id, name=gen.name, year=gen.year) for gen in get_generations() if gen.id == id]

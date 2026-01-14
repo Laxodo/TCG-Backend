@@ -7,7 +7,7 @@ from app.auth.auth import Token, create_access_token, verify_password, get_hash_
 
 router = APIRouter(
     prefix="/users",
-    tags=["users"]   
+    tags=["Users"]   
 )
 
 @router.post("/singup", status_code = status.HTTP_201_CREATED)
