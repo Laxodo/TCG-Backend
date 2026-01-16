@@ -1,5 +1,5 @@
 from app.models import GenerationBase, GenerationOut
-from app.db.database import GenerationDB, insert_generation, get_generation_by_name, get_generations, get_users
+from app.db.database import GenerationDB, insert_generation, get_generation_by_name, get_generations, get_user_by_username
 from fastapi import APIRouter, status, HTTPException, Depends
 from app.auth.auth import decode_token, oauth2_scheme, TokenData
 
@@ -12,7 +12,7 @@ router = APIRouter(
 async def create_generation(genBase: GenerationBase, token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
-    if data.username not in [u.username for u in get_users()]:
+    if get_user_by_username(data.username):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden."
@@ -34,7 +34,7 @@ async def create_generation(genBase: GenerationBase, token: str = Depends(oauth2
 async def read_all_generations(token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
-    if data.username not in [u.username for u in get_users()]:
+    if get_user_by_username(data.username):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden."
@@ -47,7 +47,7 @@ async def read_all_generations(token: str = Depends(oauth2_scheme)):
 async def read_generation_by_name(id: int, token = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
-    if data.username not in [u.username for u in get_users()]:
+    if get_user_by_username(data.username):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden."
