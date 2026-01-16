@@ -1,5 +1,5 @@
 from app.models import CardBase, CardOut
-from app.db.database import CardDB, insert_card, get_card_by_name, get_cards, get_users
+from app.db.database import CardDB, insert_card, get_card_by_name, get_cards, get_user_by_username
 from fastapi import APIRouter, status, HTTPException, Depends
 from app.auth.auth import Token, decode_token, oauth2_scheme, TokenData
 
@@ -12,7 +12,7 @@ router = APIRouter(
 async def create_card(cardBase: CardBase, token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
-    if data.username not in [u.username for u in get_users()]:
+    if get_user_by_username(data.username):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden."
@@ -37,7 +37,7 @@ async def create_card(cardBase: CardBase, token: str = Depends(oauth2_scheme)):
 async def read_all_cards(token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
-    if data.username not in [u.username for u in get_users()]:
+    if get_user_by_username(data.username):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden."
@@ -50,7 +50,7 @@ async def read_all_cards(token: str = Depends(oauth2_scheme)):
 async def read_card_by_id(id: int, token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
-    if data.username not in [u.username for u in get_users()]:
+    if get_user_by_username(data.username):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden.",

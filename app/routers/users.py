@@ -76,7 +76,7 @@ async def read_all_users(token: str = Depends(oauth2_scheme)):
     
     data: TokenData = decode_token(token)
     
-    if data.username not in [u.username for u in get_users()]:
+    if not get_user_by_username(data.username):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden.",
@@ -90,7 +90,7 @@ async def read_user(id: int, token: str = Depends(oauth2_scheme)):
 
     data: TokenData = decode_token(token)
 
-    if data.username not in [u.username for u in get_users()]:
+    if not get_user_by_username(data.username):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden.",
