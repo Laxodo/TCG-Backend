@@ -53,6 +53,18 @@ class GenerationBase(BaseModel):
 
 class GenerationOut(GenerationBase):
     id: int
+
+# =============== USER_CARD ===============
+class CardUserBase(BaseModel):
+    id_user: int
+    id_card: int
+    psa: float
+    sold: bool
+    price: float
+
+
+class CardUserOut(CardUserBase):
+    id: int
 # TODO: terminar los que quedan
 # =============== USER_CARD ===============
 

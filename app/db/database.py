@@ -12,7 +12,7 @@ class UserDB(SQLModel, table=True):
     money: float | None = Field(default=0.0, index=True)
     address: str | None = Field(default=None, index=True)
     exchanges: int | None = Field(default=0, index=True)
-    
+
 
 engine = create_engine(
     DATABASE_URL,
@@ -137,6 +137,37 @@ def get_generations() -> list[GenerationDB]:
         cards = session.exec(select(GenerationDB)).all()
         return cards
 
+
+# =============== CARD_USER ===============
+class CardUserDB(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    id_user: int = Field(index=True)
+    id_card: int = Field(index=True)
+    psa = float | None = Field(default=0.0, index=True)
+    sold = bool = Field(index=True)
+    price = float | None = Field(default=None, index=True)
+
+
+def insert_cardUser(cardUser):
+    with Session(engine) as session:
+        session.add(cardUser)
+        try:
+            session.commit()
+        except Exception:
+            raise ValueError
+        session.refresh(cardUser)
+
+
+def get_cardsUser() -> list[CardUserDB]:
+    with Session(engine) as session:
+        cardsUser = session.exec(select(CardUserDB)).all()
+        return cardsUser
+
+
+def get_card_by_user(id_user: int) -> CardUserDB | None:
+    with Session(engine) as session:
+        cards = session.exec(select(CardUserDB).where(CardUserDB.id_user == id_user)).all()
+        return cards
 
 # TODO: terminar los que quedan
 # =============== USER_CARD ===============
