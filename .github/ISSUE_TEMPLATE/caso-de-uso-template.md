@@ -1,29 +1,35 @@
----
-name: Caso de uso template
-about: Describe el caso de uso aqui
-title: ''
-labels: ''
-assignees: ''
-
----
-
 # Caso de uso
 ### Descripción
-Aqui va la descripción
+Describe la funcionalidad del caso de uso.
 
 ### Comportamiento
-  - Comportamiento
-  - Comportamiento
+  - Comportamiento 1
+  - Comportamiento 2
 
-### Endpoint
+### Endpoints principales
 - `POST /ejemplo/`
 - `GET /ejemplo/`
 
-### Endpoints necesarios
+### Endpoints relacionados
 - `POST /ejemplo/`
 - `GET /ejemplo/`
 
-### JSON
-- `Atributo 1`
-- `Atributo 2`
-- `Atributo 3`
+### Request
+```json
+{
+  "example 1": "string",
+  "example 2": boolean
+}
+```
+
+### Response
+```json
+{
+  "example 1": "string",
+  "example 2": boolean
+}
+```
+
+### Codigos de estado
+  - 200 OK
+  - 400 BAD REQUEST
