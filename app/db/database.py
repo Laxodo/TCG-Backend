@@ -47,6 +47,15 @@ def get_user_by_username(username: str) -> UserDB | None:
         return users
 
 
+def remove_user_by_id(id: int):
+    with Session(engine) as session:
+        user = session.get(UserDB, id)
+        if not user:
+            return
+        session.delete(user)
+        session.commit()
+
+
 # =============== CARD ===============
 
 class CardDB(SQLModel, table=True):

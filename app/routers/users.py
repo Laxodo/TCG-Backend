@@ -1,6 +1,5 @@
 from app.models import UserIn, UserOut, UserBase
-
-from app.db.database import UserDB, insert_user, get_user_by_username, get_users
+from app.db.database import UserDB, insert_user, get_user_by_username, get_users, remove_user_by_id
 from fastapi import APIRouter, status, HTTPException, Header, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from app.auth.auth import Token, create_access_token, verify_password, get_hash_password, decode_token, oauth2_scheme, TokenData
@@ -97,3 +96,19 @@ async def read_user(id: int, token: str = Depends(oauth2_scheme)):
         )
 
     return [UserOut(id = user.id, name = user.name, username = user.username, exchanges = user.exchanges) for user in get_users() if user.id == id]
+
+
+@router.delete(
+    "/{id}",
+    status_code = status.HTTP_200_OK
+)
+async def delete_user(id: int, token: str = Depends(oauth2_scheme)):
+    data: TokenData = decode_token(token)
+    if not get_user_by_username(data.username):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden.",
+        )
+    remove_user_by_id(id)
+
+
