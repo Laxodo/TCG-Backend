@@ -9,15 +9,14 @@ class UserBase(BaseModel):
 class UserIn(UserBase):
     name: str
     email: str
-    money: float
-    address: str
 
 
 class UserOut(BaseModel):
     id: int
-    name : str
-    username : str
-    exchanges : int 
+    name: str
+    username: str
+    money: int
+    exchanges: int
 
 
 class UserLoginIn(UserBase):

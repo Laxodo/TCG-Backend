@@ -81,7 +81,7 @@ async def read_all_users(token: str = Depends(oauth2_scheme)):
             detail="Forbidden.",
         )
     
-    return [UserOut(id = user.id, name = user.name, username = user.username, exchanges = user.exchanges) for user in get_users()]
+    return [UserOut(id = user.id, name = user.name, username = user.username, exchanges = user.exchanges, money = user.money) for user in get_users()]
 
 
 @router.get("/{id}", status_code = status.HTTP_200_OK)
@@ -95,7 +95,7 @@ async def read_user(id: int, token: str = Depends(oauth2_scheme)):
             detail="Forbidden.",
         )
 
-    return [UserOut(id = user.id, name = user.name, username = user.username, exchanges = user.exchanges) for user in get_users() if user.id == id]
+    return [UserOut(id = user.id, name = user.name, username = user.username, exchanges = user.exchanges, money = user.money) for user in get_users() if user.id == id]
 
 
 @router.delete(
