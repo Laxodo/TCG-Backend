@@ -1,6 +1,6 @@
-User(id, name, username, password, email, money, address, exchanges)
+User(id, name, username, password, email, money, exchanges, opened_boosters, is_admin)
     PK: id
-    VNN: name, username, password, email, money
+    VNN: name, username, password, email, money, opened_boosters, is_admin
 
 Generation(id, name, year)
     PK: id
@@ -16,26 +16,35 @@ Card(id, name, rarity, frontcard, backcard, id_expansion)
     VNN: name, rarity, frontcard, backcard
     FK: id_expansion -> Expansion(id)
 
-User_card(id_card, id_user, price, psa, sold)
-    PK: id_card, id_user
+User_card(id, id_card, id_user, price, psa, sold)
+    PK: id
     VNN: price
     FK: id_card -> Card(id)
     FK: id_user -> User(id)
 
-Transaction(id, id_user_card, id_from, id_to, date, price, type)
+Deck(id, id_user, name)
     PK: id
-    VNN: date, type
-    FK: id_user_card -> Card_user(id_card, id_user)
-    FK: id_from -> User(id)
-    FK: id_to -> User(id)
+    VNN: name
+    FK: id_user -> User(id)
 
-Trade(id, id_user_card_offer, id_user_card_demand, id_user_offer, id_user_demand, id_transaction_offer, id_transaction_demand, date)
+Deck_card(id_deck, id_card, quantity)
+    PK: id_deck, id_card
+    VNN: quantity
+    FK: id_deck -> Deck(id)
+    FK: id_card -> Card(id)
+
+Trade(id, id_user_card_offer, id_user_card_demand, id_user_offer, id_user_demand, date)
     PK: id
     VNN: date
     FK: id_user_card_offer -> Card_user(id_card, id_user)
     FK: id_user_card_demand -> Card_user(id_card, id_user)
     FK: id_user_offer -> User(id)
     FK: id_user_demand -> User(id)
-    FK: id_transaction_offer -> Transaction(id)
-    FK: id_transaction_demand -> Transaction(id)
 
+Transaction(id, id_user_card, id_from, id_to, id_trade , date, price, type)
+    PK: id
+    VNN: date, type
+    FK: id_user_card -> Card_user(id_card, id_user)
+    FK: id_from -> User(id)
+    FK: id_to -> User(id)
+    FK: id_trade -> Trade(id)
