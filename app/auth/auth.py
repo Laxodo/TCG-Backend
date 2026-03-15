@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from pydantic import BaseModel
 
-from app.models import UserBase
+from app.db.database import UserDB
 
 SECRET_KEY = "1234567890"
 ALGORITHM = "HS256"
@@ -20,7 +20,9 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
+    id: int | None = None
     username: str | None = None
+    is_admin: bool = False
 
 
 def get_hash_password(plain_pw: str) -> str:
@@ -36,9 +38,9 @@ def verify_password(plain_pw, hashed_pw) -> bool:
     return bcrypt.checkpw(password=plain_pw_bytes, hashed_password=hashed_pw)
 
 
-def create_access_token(user: UserBase) -> Token:
+def create_access_token(user: UserDB) -> Token:
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MIN)
-    to_encode = {"sub": user.username, "exp": expire}
+    to_encode = {"sub": user.username, "id": user.id, "is_admin": user.is_admin, "exp": expire}
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return Token(access_token=encoded_jwt, token_type="bearer")
 
@@ -46,7 +48,7 @@ def create_access_token(user: UserBase) -> Token:
 def decode_token(token: str) -> TokenData:
     try:
         payload: dict = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return TokenData(username=payload.get("sub"))
+        return TokenData(username=payload.get("sub"), id=payload.get("id"), is_admin=payload.get("is_admin"))
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
