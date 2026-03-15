@@ -15,8 +15,11 @@ class UserOut(BaseModel):
     id: int
     name: str
     username: str
+    email: str
     money: int
+    opened_boosters: int
     exchanges: int
+    is_admin: bool
 
 
 class UserLoginIn(UserBase):

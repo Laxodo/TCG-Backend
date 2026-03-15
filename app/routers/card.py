@@ -1,5 +1,5 @@
 from app.models import CardBase, CardOut
-from app.db.database import CardDB, insert_card, get_card_by_name, get_cards, get_user_by_username
+from app.db.database import CardDB, insert_card, get_card_by_name, get_card_by_id, get_cards, get_user_by_id
 from fastapi import APIRouter, status, HTTPException, Depends
 from app.auth.auth import Token, decode_token, oauth2_scheme, TokenData
 
@@ -12,7 +12,7 @@ router = APIRouter(
 async def create_card(cardBase: CardBase, token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
-    if get_user_by_username(data.username):
+    if not get_user_by_id(data.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden."
@@ -37,7 +37,7 @@ async def create_card(cardBase: CardBase, token: str = Depends(oauth2_scheme)):
 async def read_all_cards(token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
-    if get_user_by_username(data.username):
+    if not get_user_by_id(data.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden."
@@ -50,10 +50,19 @@ async def read_all_cards(token: str = Depends(oauth2_scheme)):
 async def read_card_by_id(id: int, token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
-    if get_user_by_username(data.username):
+    if not get_user_by_id(data.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden.",
         )
     
-    return [CardOut(id = card.id, id_expansion = card.id_expansion, name = card.name, rarity = card.rarity, frontcard = card.frontcard, backcard = card.backcard) for card in get_cards() if card.id == id]
+    card_target = get_card_by_id(id)
+
+    return CardOut(
+            id = card_target.id, 
+            id_expansion = card_target.id_expansion, 
+            name = card_target.name, 
+            rarity = card_target.rarity, 
+            frontcard = card_target.frontcard, 
+            backcard = card_target.backcard
+        )

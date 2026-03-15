@@ -2,24 +2,24 @@ from sqlmodel import SQLModel, create_engine, Field, Session, select
 import os
 
 DATABASE_URL = "sqlite:///app/db/data.db"
+#DATABASE_URL = "sqlite:///app/db/testdata.db"
 
 class UserDB(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    name: str = Field(index=True)
     username: str = Field(index=True, unique=True)
     password: str = Field(index=True)  
-    name: str = Field(index=True)
     email: str = Field(index=True, unique=True)
-    money: float | None = Field(default=0.0, index=True)
-    address: str | None = Field(default=None, index=True)
+    money: float = Field(default=0.0, index=True)
+    opened_boosters: int = Field(default=0, index=True)
     exchanges: int | None = Field(default=0, index=True)
-    
+    is_admin: bool = Field(default=False, index=True)
 
 engine = create_engine(
     DATABASE_URL,
     echo=False,
     connect_args={"check_same_thread": False}
 )
-
 
 def create_database_and_tables():
     SQLModel.metadata.create_all(engine)
@@ -43,8 +43,14 @@ def get_users() -> list[UserDB]:
 
 def get_user_by_username(username: str) -> UserDB | None:
     with Session(engine) as session:
-        users = session.exec(select(UserDB).where(UserDB.username == username)).first()
-        return users
+        user = session.exec(select(UserDB).where(UserDB.username == username)).first()
+        return user
+
+
+def get_user_by_id(id: int) -> UserDB | None:
+    with Session(engine) as session:
+        user = session.get(UserDB, id)
+        return user
 
 
 def remove_user_by_id(id: int):
@@ -88,6 +94,13 @@ def get_card_by_name(name: str) -> CardDB | None:
         card = session.exec(select(CardDB).where(CardDB.name == name)).first()
         return card
 
+
+def get_card_by_id(id: int) -> CardDB | None:
+    with Session(engine) as session:
+        card = session.get(CardDB, id)
+        return card
+
+
 # =============== EXPANSION ===============
 class ExpansionDB(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -109,6 +122,12 @@ def insert_expansion(expansion):
 def get_expansion_by_name(name: str) -> ExpansionDB | None:
     with Session(engine) as session:
         card = session.exec(select(ExpansionDB).where(ExpansionDB.name == name)).first()
+        return card
+
+
+def get_expansion_by_id(id: int) -> ExpansionDB | None:
+    with Session(engine) as session:
+        card = session.get(ExpansionDB, id)
         return card
 
 
@@ -138,6 +157,12 @@ def insert_generation(generations):
 def get_generation_by_name(name: str) -> GenerationDB | None:
     with Session(engine) as session:
         card = session.exec(select(GenerationDB).where(GenerationDB.name == name)).first()
+        return card
+
+
+def get_generation_by_id(id: int) -> GenerationDB | None:
+    with Session(engine) as session:
+        card = session.get(GenerationDB, id)
         return card
 
 

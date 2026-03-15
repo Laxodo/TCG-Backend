@@ -6,7 +6,7 @@ CREATE TABLE user(
     email VARCHAR(50) NOT NULL UNIQUE,
     money DECIMAL(10, 2) NOT NULL DEFAULT 0,
     opened_boosters INT NOT NULL DEFAULT 0,
-    exchanges INT DEFAULT 0,
+    exchanges INT NOT NULL DEFAULT 0,
     is_admin BOOLEAN NOT NULL DEFAULT FALSE
 );
 
