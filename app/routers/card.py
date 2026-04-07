@@ -18,12 +18,6 @@ async def create_card(cardBase: CardBase, token: str = Depends(oauth2_scheme)):
             detail="Forbidden."
         )
 
-    cardDB = get_card_by_name(cardBase.name)
-    if cardDB:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Card alredy exists"
-        )
     insert_card(CardDB(
         id_expansion = cardBase.id_expansion,
         name = cardBase.name,
