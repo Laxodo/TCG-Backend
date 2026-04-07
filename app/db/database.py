@@ -1,4 +1,5 @@
 from sqlmodel import SQLModel, create_engine, Field, Session, select
+from enum import Enum
 import os
 
 DATABASE_URL = "sqlite:///app/db/data.db"
@@ -20,6 +21,8 @@ engine = create_engine(
     echo=False,
     connect_args={"check_same_thread": False}
 )
+
+# =============== USER ===============
 
 def create_database_and_tables():
     SQLModel.metadata.create_all(engine)
@@ -73,6 +76,20 @@ class CardDB(SQLModel, table=True):
     backcard: str = Field(index=True)
 
 
+class Rarity(Enum):
+    common = "Common"
+    uncommon = "Uncommon"
+    rare = "Rare"
+    rare_holo = "Rare Holo"
+    rainbow_rare = "Rainbow Rare"
+    ultra_rare = "Ultra Rare"
+    hyper_rare = "Hyper Rare"
+
+
+rarity_variable: Enum = [Rarity.rare, Rarity.rare_holo, Rarity.rainbow_rare, Rarity.ultra_rare, Rarity.hyper_rare]
+probabilities: list[int] = [70, 15, 10, 4, 1]
+
+
 def insert_card(card):
     with Session(engine) as session:
         session.add(card)
@@ -99,6 +116,18 @@ def get_card_by_id(id: int) -> CardDB | None:
     with Session(engine) as session:
         card = session.get(CardDB, id)
         return card
+
+
+def get_cards_by_expansion(id_expansion: int) -> list[CardDB]:
+    with Session(engine) as session:
+        cards = session.exec(select(CardDB).where(CardDB.id_expansion == id_expansion)).all()
+        return cards
+
+
+def get_cards_by_expansion_and_rarity(id_expansion: int, rarity: Rarity) -> list[CardDB]:
+    with Session(engine) as session:
+        cards = session.exec(select(CardDB).where(CardDB.id_expansion == id_expansion).where(CardDB.rarity == rarity.value)).all()
+        return cards
 
 
 # =============== EXPANSION ===============

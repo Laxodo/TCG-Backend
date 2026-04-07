@@ -1,7 +1,21 @@
 from app.models import CardBase, ExpansionBase, ExpansionOut
-from app.db.database import ExpansionDB, insert_expansion, get_expansion_by_name, get_expansion_by_id, get_expansions, get_user_by_username
 from fastapi import APIRouter, status, HTTPException, Depends
 from app.auth.auth import decode_token, oauth2_scheme, TokenData
+from random import choices
+from app.db.database import (
+    ExpansionDB,
+    CardDB,
+    Rarity,
+    rarity_variable,
+    probabilities,
+    insert_expansion, 
+    get_expansion_by_name, 
+    get_expansion_by_id, 
+    get_expansions, 
+    get_user_by_id, 
+    get_cards_by_expansion, 
+    get_cards_by_expansion_and_rarity
+)
 
 router = APIRouter(
     prefix = "/expansions",
@@ -12,7 +26,7 @@ router = APIRouter(
 async def create_expansion(ExpansionBase: ExpansionBase, token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
-    if not get_user_by_username(data.username):
+    if not get_user_by_id(data.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden."
@@ -35,7 +49,7 @@ async def create_expansion(ExpansionBase: ExpansionBase, token: str = Depends(oa
 async def read_all_expansions(token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
-    if not get_user_by_username(data.username):
+    if not get_user_by_id(data.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden."
@@ -47,7 +61,7 @@ async def read_all_expansions(token: str = Depends(oauth2_scheme)):
 async def read_expansion(id: int, token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
-    if not get_user_by_username(data.username):
+    if not get_user_by_id(data.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden."
@@ -61,3 +75,35 @@ async def read_expansion(id: int, token: str = Depends(oauth2_scheme)):
             name=expansion_target.name, 
             year=expansion_target.year
         )
+
+
+@router.get(
+        "/{id}/open-boosted", 
+        response_model=list[CardDB],
+        status_code=status.HTTP_200_OK
+)
+async def open_boosted(id: int, token: str = Depends(oauth2_scheme)):
+    data: TokenData = decode_token(token)
+
+    if not get_user_by_id(data.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden."
+        )
+
+    if not get_expansion_by_id(id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Expansion not found."
+        )
+    
+    booster: list[CardDB] = []
+
+    booster = choices(get_cards_by_expansion_and_rarity(id, Rarity.common), k=5)
+    booster += choices(get_cards_by_expansion_and_rarity(id, Rarity.uncommon), k=3)
+    booster += choices(get_cards_by_expansion_and_rarity(id, Rarity.rare), k=1)
+    card_rarity: Rarity = choices(rarity_variable, weights=probabilities, k=1)[0]
+    booster += choices(get_cards_by_expansion_and_rarity(id, card_rarity), k=1)
+
+    return booster
+
