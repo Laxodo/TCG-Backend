@@ -26,7 +26,7 @@ router = APIRouter(
 async def create_expansion(ExpansionBase: ExpansionBase, token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
-    if not get_user_by_id(data.id):
+    if not get_user_by_id(data.id) or not data.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden."
@@ -82,7 +82,7 @@ async def read_expansion(id: int, token: str = Depends(oauth2_scheme)):
         response_model=list[CardDB],
         status_code=status.HTTP_200_OK
 )
-async def open_boosted(id: int, token: str = Depends(oauth2_scheme)):
+async def open_boosted_pack(id: int, token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
     if not get_user_by_id(data.id):

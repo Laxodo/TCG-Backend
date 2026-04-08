@@ -26,6 +26,21 @@ engine = create_engine(
 
 def create_database_and_tables():
     SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        user = UserDB(
+                name = "admin",
+                username = "admin",
+                password = "adm1029",
+                email = "admin@laxodo.com",
+                money = 9999999,
+                is_admin = True
+            )
+        try:
+            session.add(user)
+            session.commit()
+            session.refresh()
+        except Exception:
+            pass
 
 
 def insert_user(user):

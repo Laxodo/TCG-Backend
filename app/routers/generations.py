@@ -12,7 +12,7 @@ router = APIRouter(
 async def create_generation(genBase: GenerationBase, token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
-    if not get_user_by_username(data.username):
+    if not get_user_by_username(data.username) or not data.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden."
@@ -44,7 +44,7 @@ async def read_all_generations(token: str = Depends(oauth2_scheme)):
 
 
 @router.get("/{id}", status_code=status.HTTP_200_OK)
-async def read_generation_by_name(id: int, token = Depends(oauth2_scheme)):
+async def read_generation(id: int, token = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
     if not get_user_by_username(data.username):

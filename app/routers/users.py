@@ -71,7 +71,7 @@ async def read_all_users(token: str = Depends(oauth2_scheme)):
     
     data: TokenData = decode_token(token)
     
-    if not get_user_by_id(data.id):
+    if not get_user_by_id(data.id) or not data.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden.",
@@ -87,7 +87,7 @@ async def read_user(id: int, token: str = Depends(oauth2_scheme)):
 
     user = get_user_by_id(data.id)
 
-    if not user:
+    if not user or not data.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden.",
@@ -118,7 +118,7 @@ async def read_user(id: int, token: str = Depends(oauth2_scheme)):
 )
 async def delete_user(id: int, token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
-    if not get_user_by_id(data.id):
+    if not get_user_by_id(data.id) or not data.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden.",
