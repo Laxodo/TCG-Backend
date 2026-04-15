@@ -5,6 +5,7 @@ from random import choices
 from app.db.database import (
     ExpansionDB,
     CardDB,
+    UserCardDB,
     Rarity,
     rarity_variable,
     probabilities,
@@ -14,7 +15,8 @@ from app.db.database import (
     get_expansions, 
     get_user_by_id, 
     get_cards_by_expansion, 
-    get_cards_by_expansion_and_rarity
+    get_cards_by_expansion_and_rarity,
+    create_user_card
 )
 
 router = APIRouter(
@@ -79,7 +81,7 @@ async def read_expansion(id: int, token: str = Depends(oauth2_scheme)):
 
 @router.get(
         "/{id}/open-boosted", 
-        response_model=list[CardDB],
+        response_model=list[UserCardDB],
         status_code=status.HTTP_200_OK
 )
 async def open_boosted_pack(id: int, token: str = Depends(oauth2_scheme)):
@@ -96,8 +98,6 @@ async def open_boosted_pack(id: int, token: str = Depends(oauth2_scheme)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Expansion not found."
         )
-    
-    booster: list[CardDB] = []
 
     booster = choices(get_cards_by_expansion_and_rarity(id, Rarity.common), k=5)
     booster += choices(get_cards_by_expansion_and_rarity(id, Rarity.uncommon), k=3)
@@ -105,5 +105,6 @@ async def open_boosted_pack(id: int, token: str = Depends(oauth2_scheme)):
     card_rarity: Rarity = choices(rarity_variable, weights=probabilities, k=1)[0]
     booster += choices(get_cards_by_expansion_and_rarity(id, card_rarity), k=1)
 
-    return booster
+    [create_user_card(id_card=c.id ,id_user=id, price=c.price, psa=None, sold=False) for c in booster]
 
+    return booster

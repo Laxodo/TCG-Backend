@@ -24,13 +24,13 @@ engine = create_engine(
 
 # =============== USER ===============
 
-def create_database_and_tables():
+def create_database_and_tables(passwd: str):
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
         user = UserDB(
                 name = "admin",
                 username = "admin",
-                password = "adm1029",
+                password = passwd,
                 email = "admin@laxodo.com",
                 money = 9999999,
                 is_admin = True
@@ -87,6 +87,8 @@ class CardDB(SQLModel, table=True):
     id_expansion: int = Field(index=True)
     name: str = Field(index=True)
     rarity: str = Field(index=True)
+    price: float = Field(index=True)
+    card_number: int = Field(index=True, unique=True)
     frontcard: str = Field(index=True)
     backcard: str = Field(index=True)
 
@@ -218,8 +220,35 @@ def get_generations() -> list[GenerationDB]:
 
 # TODO: terminar los que quedan
 # =============== USER_CARD ===============
+class UserCardDB(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    id_card: int = Field(index=True)
+    id_user: int = Field(index=True)
+    price: float = Field(index=True)
+    psa: int | None = Field(index=True)
+    sold: bool = Field(index=True, default=True)
 
 
+def create_user_card(user_card) -> None:
+    with Session(engine) as session:
+        session.add(user_card)
+        try:
+            session.commit()
+        except Exception:
+            raise ValueError
+        session.refresh(user_card)
+
+
+def get_user_cards(id_user: int) -> list[UserCardDB]:
+    with Session(engine) as session:
+        cards = session.exec(select(UserCardDB).where(UserCardDB.id_user == id_user)).all()
+        return cards
+
+
+def get_user_cards_by_expansion(id_user: int, id_expansion: int) -> list[UserCardDB]:
+    with Session(engine) as session:
+        cards = session.exec(select(UserCardDB, CardDB).where(UserCardDB.id_user == id_user).where(CardDB.id_expansion == id_expansion)).all()
+        return cards
 
 # =============== TRANSACTION ===============
 

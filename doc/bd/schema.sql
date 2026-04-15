@@ -21,7 +21,7 @@ CREATE TABLE expansion(
     id_generation INT NOT NULL,
     name VARCHAR(50) NOT NULL,
     year YEAR NOT NULL,
-    FOREIGN KEY (id_generation) REFERENCES generation(id)
+    FOREIGN KEY (id_generation) REFERENCES generation(id) ON DELETE CASCADE
 );
 
 CREATE TABLE card(
@@ -29,9 +29,11 @@ CREATE TABLE card(
     id_expansion INT NOT NULL,
     name VARCHAR(50) NOT NULL,
     rarity VARCHAR(50) NOT NULL,
+    price DECIMAL(10,2) NOT NULL DEFAULT 100,
+    card_number INT NOT NULL UNIQUE,
     frontcard VARCHAR(255) NOT NULL,
     backcard VARCHAR(255) NOT NULL,
-    FOREIGN KEY (id_expansion) REFERENCES expansion(id)
+    FOREIGN KEY (id_expansion) REFERENCES expansion(id) ON DELETE CASCADE
 );
 
 CREATE TABLE user_card(
@@ -41,15 +43,15 @@ CREATE TABLE user_card(
     price DECIMAL(10, 2),
     psa DECIMAL(3,1),
     sold BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (id_card) REFERENCES card(id),
-    FOREIGN KEY (id_user) REFERENCES user(id)
+    FOREIGN KEY (id_card) REFERENCES card(id) ON DELETE CASCADE,
+    FOREIGN KEY (id_user) REFERENCES user(id) ON DELETE CASCADE
 );
 
 CREATE TABLE deck(
     id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
     id_user INT NOT NULL,
     name VARCHAR(50) NOT NULL,
-    FOREIGN KEY (id_user) REFERENCES user(id)
+    FOREIGN KEY (id_user) REFERENCES user(id) ON DELETE CASCADE
 );
 
 CREATE TABLE deck_card(

@@ -30,6 +30,8 @@ class CardBase(BaseModel):
     id_expansion: int
     name: str
     rarity: str
+    price: float
+    card_number: int
     frontcard: str
     backcard: str
 

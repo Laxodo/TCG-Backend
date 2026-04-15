@@ -1,8 +1,17 @@
 from app.models import UserIn, UserOut, UserBase
-from app.db.database import UserDB, insert_user, get_user_by_username, get_user_by_id, get_users, remove_user_by_id
 from fastapi import APIRouter, status, HTTPException, Header, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from app.auth.auth import Token, create_access_token, verify_password, get_hash_password, decode_token, oauth2_scheme, TokenData
+from app.db.database import (
+    UserDB, 
+    insert_user, 
+    get_user_by_username, 
+    get_user_by_id, 
+    get_users, 
+    remove_user_by_id,
+    get_user_cards,
+    get_user_cards_by_expansion
+)
 
 router = APIRouter(
     prefix="/users",
@@ -124,3 +133,20 @@ async def delete_user(id: int, token: str = Depends(oauth2_scheme)):
             detail="Forbidden.",
         )
     remove_user_by_id(id)
+
+@router.get(
+    "/{id}/inventory",
+    status_code = status.HTTP_200_OK
+)
+async def read_user_cards(id: int, token: str = Depends(oauth2_scheme), limit: int = 10, expansion: int | None = None):
+    data: TokenData = decode_token(token)
+    if not get_user_by_id(data.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden.",
+        )
+
+    if expansion is not None:
+        return get_user_cards_by_expansion(data.id, expansion)
+
+    return get_user_cards(data.id) 
