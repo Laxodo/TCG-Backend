@@ -1,6 +1,6 @@
 from app.models import CardBase, CardOut
 from app.db.database import CardDB, insert_card, get_card_by_name, get_card_by_id, get_cards, get_user_by_id
-from fastapi import APIRouter, status, HTTPException, Depends
+from fastapi import APIRouter, status, HTTPException, Depends, Body
 from app.auth.auth import Token, decode_token, oauth2_scheme, TokenData
 
 router = APIRouter(
@@ -23,12 +23,13 @@ async def create_card(cardBase: CardBase, token: str = Depends(oauth2_scheme)):
         name = cardBase.name,
         rarity = cardBase.rarity,
         price = cardBase.price,
+        card_number = cardBase.card_number,
         frontcard = cardBase.frontcard,
         backcard = cardBase.backcard
     ))
 
 
-@router.post("/", status_code = status.HTTP_201_CREATED)
+@router.post("/batch", status_code = status.HTTP_201_CREATED)
 async def create_cards(cardBaseList: list[CardBase], token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
@@ -43,12 +44,17 @@ async def create_cards(cardBaseList: list[CardBase], token: str = Depends(oauth2
         name = cardBase.name,
         rarity = cardBase.rarity,
         price = cardBase.price,
+        card_number = cardBase.card_number,
         frontcard = cardBase.frontcard,
         backcard = cardBase.backcard
     )) for cardBase in cardBaseList]
 
 
-@router.get("/", response_model = list[CardOut], status_code = status.HTTP_200_OK)
+@router.get(
+        "/",
+        response_model = list[CardOut], 
+        status_code = status.HTTP_200_OK
+)
 async def read_all_cards(token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
@@ -58,7 +64,7 @@ async def read_all_cards(token: str = Depends(oauth2_scheme)):
             detail="Forbidden."
         )
     
-    return [CardOut(id = card.id, id_expansion = card.id_expansion, name = card.name, rarity = card.rarity, price = card.price, frontcard = card.frontcard, backcard = card.backcard) for card in get_cards()]
+    return [CardOut(id = card.id, id_expansion = card.id_expansion, name = card.name, rarity = card.rarity, price = card.price, card_number = card.card_number, frontcard = card.frontcard, backcard = card.backcard) for card in get_cards()]
 
 
 @router.get("/{id}", status_code = status.HTTP_200_OK)

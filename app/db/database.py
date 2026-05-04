@@ -1,4 +1,5 @@
-from sqlmodel import SQLModel, create_engine, Field, Session, select
+from sqlmodel import SQLModel, create_engine, Field, Session, select, Relationship, col
+from fastapi import Depends
 from enum import Enum
 import os
 
@@ -21,6 +22,7 @@ engine = create_engine(
     echo=False,
     connect_args={"check_same_thread": False}
 )
+
 
 # =============== USER ===============
 
@@ -91,6 +93,8 @@ class CardDB(SQLModel, table=True):
     card_number: int = Field(index=True, unique=True)
     frontcard: str = Field(index=True)
     backcard: str = Field(index=True)
+
+    user_cards: list["UserCardDB"] = Relationship(back_populates="card")
 
 
 class Rarity(Enum):
@@ -218,15 +222,17 @@ def get_generations() -> list[GenerationDB]:
         return cards
 
 
-# TODO: terminar los que quedan
 # =============== USER_CARD ===============
 class UserCardDB(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    id_card: int = Field(index=True)
+#    id_card: int = Field(index=True)
     id_user: int = Field(index=True)
     price: float = Field(index=True)
     psa: int | None = Field(index=True)
     sold: bool = Field(index=True, default=True)
+
+    id_card: int = Field(default=None, foreign_key="carddb.id")
+    card: CardDB | None = Relationship(back_populates="user_cards")
 
 
 def create_user_card(user_card) -> None:
@@ -239,20 +245,34 @@ def create_user_card(user_card) -> None:
         session.refresh(user_card)
 
 
-def get_user_cards(id_user: int) -> list[UserCardDB]:
+def get_user_cards(id_user: int, offset: int, limit: int) -> list[UserCardDB]:
     with Session(engine) as session:
-        cards = session.exec(select(UserCardDB).where(UserCardDB.id_user == id_user)).all()
-        return cards
+        user_cards = session.exec(select(UserCardDB).where(UserCardDB.id_user == id_user).offset(offset).limit(limit)).all()
+        id_cards: set = set([card.id_card for card in user_cards])
+        cards = session.exec(select(CardDB).where(col(CardDB.id).in_(list(id_cards)))).all()
+        return [user_cards, cards]
 
 
-def get_user_cards_by_expansion(id_user: int, id_expansion: int) -> list[UserCardDB]:
+def get_user_cards_by_expansion(id_user: int, id_expansion: int, limit: int, offset: int):
     with Session(engine) as session:
-        cards = session.exec(select(UserCardDB, CardDB).where(UserCardDB.id_user == id_user).where(CardDB.id_expansion == id_expansion)).all()
-        return cards
+        statement = select(UserCardDB).join(CardDB, UserCardDB.id_card == CardDB.id)
+        statement = statement.where(UserCardDB.id_user == id_user).where(CardDB.id_expansion == id_expansion)
+        statement = statement.offset(offset).limit(limit)
+        user_cards = session.exec(statement).all()
+        id_cards: set = set([card.id_card for card in user_cards])
+        cards = session.exec(select(CardDB).where(col(CardDB.id).in_(list(id_cards)))).all()
+        return [user_cards, cards]
 
+
+def get_user_progression(id: int, id_expansion: int) -> dict[CardDB, UserCardDB]:
+    with Session(engine) as session:
+        statement = select(UserCardDB)
+
+# TODO: terminar los que quedan
 # =============== TRANSACTION ===============
 
 
 
 # =============== TRADE ===============
 
+        #cards = session.exec(select(UserCardDB).join(CardDB, UserCardDB.id_card == CardDB.id).where(UserCardDB.id_user == id_user).where(CardDB.id_expansion == id_expansion)).all()

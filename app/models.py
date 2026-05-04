@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+#TODO: implementar los dto para devolver la informacion para no devolver objetos de la base de datos
 
 #=============== USER ===============
 class UserBase(BaseModel):
@@ -57,11 +58,32 @@ class GenerationBase(BaseModel):
 
 class GenerationOut(GenerationBase):
     id: int
-# TODO: terminar los que quedan
+
 # =============== USER_CARD ===============
+class UserCardOut(BaseModel):
+    id: int
+    id_user: int
+    id_card: int
+    price: float
+    psa: int | None
+    sold: bool
 
 
+class CollectionCardOut(BaseModel):
+    id_card: int
+    card_number: int
+    card_name: str
+    owned: bool
+    quantity: int
+    frontcard: str
 
+
+class UserCardListOut(BaseModel):
+    card: CardOut
+    user_cards: list[UserCardOut]
+
+
+# TODO: terminar los que quedan
 # =============== TRANSACTION ===============
 
 

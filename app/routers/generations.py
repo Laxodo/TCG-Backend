@@ -30,7 +30,11 @@ async def create_generation(genBase: GenerationBase, token: str = Depends(oauth2
     ))
 
 
-@router.get("/", response_model=list[GenerationOut], status_code=status.HTTP_200_OK)
+@router.get(
+        "/", 
+        response_model=list[GenerationOut], 
+        status_code=status.HTTP_200_OK
+)
 async def read_all_generations(token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
@@ -43,7 +47,11 @@ async def read_all_generations(token: str = Depends(oauth2_scheme)):
     return [GenerationOut(id=gen.id, name=gen.name, year=gen.year) for gen in get_generations()]
 
 
-@router.get("/{id}", status_code=status.HTTP_200_OK)
+@router.get(
+        "/{id}", 
+        response_model=GenerationOut,
+        status_code=status.HTTP_200_OK
+)
 async def read_generation(id: int, token = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 

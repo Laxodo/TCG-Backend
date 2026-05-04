@@ -1,4 +1,4 @@
-from app.models import UserIn, UserOut, UserBase
+from app.models import UserIn, UserOut, UserBase, CardOut, UserCardOut, UserCardListOut
 from fastapi import APIRouter, status, HTTPException, Header, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from app.auth.auth import Token, create_access_token, verify_password, get_hash_password, decode_token, oauth2_scheme, TokenData
@@ -89,9 +89,12 @@ async def read_all_users(token: str = Depends(oauth2_scheme)):
     return [UserOut(id = user.id, name = user.name, username = user.username, email = user.email, exchanges = user.exchanges, money = user.money, opened_boosters = user.opened_boosters, is_admin = user.is_admin) for user in get_users()]
 
 
-@router.get("/{id}", status_code = status.HTTP_200_OK)
+@router.get(
+        "/{id}", 
+        response_model = list[UserOut], 
+        status_code = status.HTTP_200_OK
+)
 async def read_user(id: int, token: str = Depends(oauth2_scheme)):
-
     data: TokenData = decode_token(token)
 
     user = get_user_by_id(data.id)
@@ -134,19 +137,45 @@ async def delete_user(id: int, token: str = Depends(oauth2_scheme)):
         )
     remove_user_by_id(id)
 
+
 @router.get(
     "/{id}/inventory",
+    response_model = list[UserCardListOut],
     status_code = status.HTTP_200_OK
 )
-async def read_user_cards(id: int, token: str = Depends(oauth2_scheme), limit: int = 10, expansion: int | None = None):
+async def read_user_cards(id: int, expansion: int | None = None, limit: int = 0, offset: int = 10, token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
-    if not get_user_by_id(data.id):
+
+    if not get_user_by_id(data.id) or data.id is not id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden.",
         )
 
-    if expansion is not None:
-        return get_user_cards_by_expansion(data.id, expansion)
+    user_card_dict: dict[int, UserCardListOut] = {}
+    user_cards, cards = get_user_cards(id, limit, offset) if expansion is None else get_user_cards_by_expansion(id, expansion, limit, offset)
 
-    return get_user_cards(data.id) 
+    for card in cards:
+        card_out: CardOut = CardOut(
+                id = card.id,
+                id_expansion = card.id_expansion,
+                name = card.name,
+                rarity = card.rarity,
+                price = card.price,
+                card_number = card.card_number,
+                frontcard = card.frontcard,
+                backcard = card.backcard
+            )
+        user_card_dict[card.id] = UserCardListOut(card=card_out, user_cards=[])
+
+    for user_card in user_cards:
+        user_card = UserCardOut(
+                id = user_card.id,
+                id_user = user_card.id_user,
+                id_card = user_card.id_card,
+                price = user_card.price,
+                psa = user_card.psa,
+                sold = user_card.sold
+            )
+        user_card_dict[user_card.id_card].user_cards.append(user_card)
+    return user_card_dict.values()
