@@ -69,18 +69,17 @@ class UserCardOut(BaseModel):
     sold: bool
 
 
+class UserCardListOut(BaseModel):
+    card: CardOut
+    user_cards: list[UserCardOut]
+
+
 class CollectionCardOut(BaseModel):
     id_card: int
     card_number: int
     card_name: str
-    owned: bool
     quantity: int
     frontcard: str
-
-
-class UserCardListOut(BaseModel):
-    card: CardOut
-    user_cards: list[UserCardOut]
 
 
 # TODO: terminar los que quedan

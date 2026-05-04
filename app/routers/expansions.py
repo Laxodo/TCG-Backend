@@ -2,6 +2,7 @@ from app.models import CardBase, ExpansionBase, ExpansionOut, CollectionCardOut,
 from fastapi import APIRouter, status, HTTPException, Depends
 from app.auth.auth import decode_token, oauth2_scheme, TokenData
 from random import choices
+from app.tools.tools import get_formated_user_card
 from app.db.database import (
     ExpansionDB,
     CardDB,
@@ -100,11 +101,17 @@ async def open_boosted_pack(id: int, token: str = Depends(oauth2_scheme)):
     
     user = get_user_by_id(data.id)
 
-    #TODO: Comprobar que el usuario tenga saldo suficiente y añadir precio a las expansiones.
     if not user:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden."
+        )
+
+    #TODO: Cantidad temporal hasta que se remplace por el precio del sobre seleccionado o poner precio estatico por sobre.
+    if user.money <  5:
+        raise HTTPException(
+            status_code=status.HTTP_412_PAYMENT_REQUIRED,
+            detail="Saldo insuficiente."
         )
 
     if not get_expansion_by_id(id):
@@ -124,13 +131,12 @@ async def open_boosted_pack(id: int, token: str = Depends(oauth2_scheme)):
 
     return [CardOut(id=card.id, id_expansion=card.id_expansion, name=card.name, rarity=card.rarity, price=card.price, card_number=card.card_number, frontcard=card.frontcard, backcard=card.backcard) for card in booster]
 
-#TODO: Terminar esto con la clase CollectionCardOut
 @router.get(
         "{id}/collection",
         response_model=list[CollectionCardOut],
         status_code=status.HTTP_200_OK
 )
-async def read_collection(id: int, token: str = Depends(oauth2_scheme)):
+async def read_collection(id: int, expansion: int, token: str = Depends(oauth2_scheme)):
     data: TokenData = decode_token(token)
 
     if not get_user_by_id(data.id):
@@ -139,10 +145,23 @@ async def read_collection(id: int, token: str = Depends(oauth2_scheme)):
             detail="Forbidden."
         )
 
-    if not get_expansion_by_id(id):
+    if not get_expansion_by_id(expansion):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Expansion not found."
         )
+     
+    collection_card_list: list[CollectionCardOut] = []
 
-    return 
+    for card_list in get_formated_user_card(id, expansion, -1, -1):
+        collection_card_list.append(
+                CollectionCardOut(
+                        id_card=card_list.card.id,
+                        card_number=card_list.card.card_number,
+                        card_name=card_list.card.name,
+                        quantity=len(card_list.user_cards),
+                        frontcard=card_list.card.frontcard,
+                    )
+            )
+
+    return collection_card_list
