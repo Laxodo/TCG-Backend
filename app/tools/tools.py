@@ -1,9 +1,9 @@
 from app.db.database import get_user_cards, get_user_cards_by_expansion
 from app.models import CardOut, UserCardListOut, UserCardOut
 
-def get_formated_user_card(id: int, expansion: int | None, limit: int, offset: int):
+def get_formated_user_card(session, id: int, expansion: int | None, limit: int, offset: int):
     user_card_dict: dict[int, UserCardListOut] = {}
-    user_cards, cards = get_user_cards(id, limit, offset) if expansion is None else get_user_cards_by_expansion(id, expansion, limit, offset)
+    user_cards, cards = get_user_cards(session, id, limit, offset) if expansion is None else get_user_cards_by_expansion(session, id, expansion, limit, offset)
 
     for card in cards:
         card_out: CardOut = CardOut(

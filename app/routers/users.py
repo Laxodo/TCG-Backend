@@ -5,7 +5,8 @@ from app.auth.auth import Token, create_access_token, verify_password, get_hash_
 from app.tools.tools import get_formated_user_card
 from app.db.database import (
     UserDB, 
-    insert_user, 
+    insert_user,
+    get_session,
     get_user_by_username, 
     get_user_by_id, 
     get_users, 
@@ -20,15 +21,15 @@ router = APIRouter(
 )
 
 @router.post("/singup", status_code = status.HTTP_201_CREATED)
-async def create_user(userIn: UserIn):
-    userDB = get_user_by_username(userIn.username)
+async def create_user(userIn: UserIn, session = Depends(get_session)):
+    userDB = get_user_by_username(session, userIn.username)
     if userDB is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Username already exists"
         )
     try:
-        insert_user(UserDB(
+        insert_user(session, UserDB(
             name = userIn.name,
             username = userIn.username,
             password = get_hash_password(userIn.password),
@@ -50,7 +51,7 @@ async def create_user(userIn: UserIn):
     response_model = Token,
     status_code = status.HTTP_200_OK
 )
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), session = Depends(get_session)):
     username: str | None = form_data.username
     password: str | None = form_data.password
 
@@ -60,7 +61,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             detail="Username/password incorrect"
         )
 
-    userFound = get_user_by_username(username)
+    userFound = get_user_by_username(session, username)
 
     if not userFound or not verify_password(password, userFound.password):
         raise HTTPException(
@@ -77,28 +78,28 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     response_model = list[UserOut],
     status_code = status.HTTP_200_OK
 )
-async def read_all_users(token: str = Depends(oauth2_scheme)):
+async def read_all_users(token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     
     data: TokenData = decode_token(token)
     
-    if not get_user_by_id(data.id) or not data.is_admin:
+    if not get_user_by_id(session, data.id) or not data.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden.",
         )
     
-    return [UserOut(id = user.id, name = user.name, username = user.username, email = user.email, exchanges = user.exchanges, money = user.money, opened_boosters = user.opened_boosters, is_admin = user.is_admin) for user in get_users()]
+    return [UserOut(id = user.id, name = user.name, username = user.username, email = user.email, exchanges = user.exchanges, money = user.money, opened_boosters = user.opened_boosters, is_admin = user.is_admin) for user in get_users(session)]
 
 
 @router.get(
         "/{id}", 
-        response_model = list[UserOut], 
+        response_model = UserOut, 
         status_code = status.HTTP_200_OK
 )
-async def read_user(id: int, token: str = Depends(oauth2_scheme)):
+async def read_user(id: int, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
 
-    user = get_user_by_id(data.id)
+    user = get_user_by_id(session, data.id)
 
     if not user or not data.is_admin:
         raise HTTPException(
@@ -106,7 +107,7 @@ async def read_user(id: int, token: str = Depends(oauth2_scheme)):
             detail="Forbidden.",
         )
 
-    user_target = get_user_by_id(id)
+    user_target = get_user_by_id(session, id)
     if not user_target:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -129,14 +130,14 @@ async def read_user(id: int, token: str = Depends(oauth2_scheme)):
     "/{id}",
     status_code = status.HTTP_200_OK
 )
-async def delete_user(id: int, token: str = Depends(oauth2_scheme)):
+async def delete_user(id: int, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
-    if not get_user_by_id(data.id) or not data.is_admin:
+    if not get_user_by_id(session, data.id) or not data.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden.",
         )
-    remove_user_by_id(id)
+    remove_user_by_id(session, id)
 
 
 @router.get(
@@ -144,13 +145,13 @@ async def delete_user(id: int, token: str = Depends(oauth2_scheme)):
     response_model = list[UserCardListOut],
     status_code = status.HTTP_200_OK
 )
-async def read_user_cards(id: int, expansion: int | None = None, limit: int = 0, offset: int = 10, token: str = Depends(oauth2_scheme)):
+async def read_user_cards(id: int, expansion: int | None = None, limit: int = 10, offset: int = 0, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
 
-    if not get_user_by_id(data.id) or data.id is not id:
+    if not get_user_by_id(session, data.id) or data.id is not id and not data.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden.",
         )
 
-    return get_formated_user_card(id, expansion, limit, offset)
+    return get_formated_user_card(session, id, expansion, limit, offset)

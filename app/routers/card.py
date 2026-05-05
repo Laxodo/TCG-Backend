@@ -1,5 +1,5 @@
 from app.models import CardBase, CardOut
-from app.db.database import CardDB, insert_card, get_card_by_name, get_card_by_id, get_cards, get_user_by_id
+from app.db.database import CardDB, insert_card, get_card_by_name, get_card_by_id, get_cards, get_user_by_id, get_session
 from fastapi import APIRouter, status, HTTPException, Depends, Body
 from app.auth.auth import Token, decode_token, oauth2_scheme, TokenData
 
@@ -9,16 +9,16 @@ router = APIRouter(
 )
 
 @router.post("/", status_code = status.HTTP_201_CREATED)
-async def create_card(cardBase: CardBase, token: str = Depends(oauth2_scheme)):
+async def create_card(cardBase: CardBase, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
 
-    if not get_user_by_id(data.id) or not data.is_admin:
+    if not get_user_by_id(session, data.id) or not data.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden."
         )
 
-    insert_card(CardDB(
+    insert_card(session, CardDB(
         id_expansion = cardBase.id_expansion,
         name = cardBase.name,
         rarity = cardBase.rarity,
@@ -30,16 +30,16 @@ async def create_card(cardBase: CardBase, token: str = Depends(oauth2_scheme)):
 
 
 @router.post("/batch", status_code = status.HTTP_201_CREATED)
-async def create_cards(cardBaseList: list[CardBase], token: str = Depends(oauth2_scheme)):
+async def create_cards(cardBaseList: list[CardBase], token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
 
-    if not get_user_by_id(data.id) or not data.is_admin:
+    if not get_user_by_id(session, data.id) or not data.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden."
         )
     
-    [insert_card(CardDB(
+    [insert_card(session, CardDB(
         id_expansion = cardBase.id_expansion,
         name = cardBase.name,
         rarity = cardBase.rarity,
@@ -55,36 +55,41 @@ async def create_cards(cardBaseList: list[CardBase], token: str = Depends(oauth2
         response_model = list[CardOut], 
         status_code = status.HTTP_200_OK
 )
-async def read_all_cards(token: str = Depends(oauth2_scheme)):
+async def read_all_cards(token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
 
-    if not get_user_by_id(data.id):
+    if not get_user_by_id(session, data.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden."
         )
     
-    return [CardOut(id = card.id, id_expansion = card.id_expansion, name = card.name, rarity = card.rarity, price = card.price, card_number = card.card_number, frontcard = card.frontcard, backcard = card.backcard) for card in get_cards()]
+    return [CardOut(id = card.id, id_expansion = card.id_expansion, name = card.name, rarity = card.rarity, price = card.price, card_number = card.card_number, frontcard = card.frontcard, backcard = card.backcard) for card in get_cards(session)]
 
 
-@router.get("/{id}", status_code = status.HTTP_200_OK)
-async def read_card_by_id(id: int, token: str = Depends(oauth2_scheme)):
+@router.get(
+        "/{id}",
+        response_model=CardOut,
+        status_code = status.HTTP_200_OK
+)
+async def read_card_by_id(id: int, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
 
-    if not get_user_by_id(data.id):
+    if not get_user_by_id(session, data.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden.",
         )
     
-    card_target = get_card_by_id(id)
+    card_target = get_card_by_id(session, id)
 
     return CardOut(
             id = card_target.id, 
             id_expansion = card_target.id_expansion, 
             name = card_target.name, 
             rarity = card_target.rarity,
-            price = card.price,
+            price = card_target.price,
+            card_number = card_target.card_number,
             frontcard = card_target.frontcard, 
             backcard = card_target.backcard
         )
