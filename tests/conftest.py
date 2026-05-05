@@ -57,7 +57,7 @@ def test_user(session: Session):
         password = get_hash_password("user"),
         email = f"{''.join(choice(ascii_letters) for _ in range(6))}@asd.com",
         money = 0,
-        is_admin = True
+        is_admin = False
     )
 
     session.add(user)
