@@ -1,6 +1,7 @@
 import bcrypt
 
 from datetime import datetime, timedelta
+from fastapi import HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from pydantic import BaseModel
