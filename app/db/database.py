@@ -28,9 +28,13 @@ def get_session():
 
 # =============== USER ===============
 
-def create_database_and_tables(session: Session, passwd: str):
+def create_database_and_tables():
     SQLModel.metadata.create_all(engine)
-    user = UserDB(
+
+
+def create_admin_user(passwd: str):
+    with next(get_session()) as session:
+        admin = UserDB(
             name = "admin",
             username = "admin",
             password = passwd,
@@ -38,12 +42,12 @@ def create_database_and_tables(session: Session, passwd: str):
             money = 9999999,
             is_admin = True
         )
-    try:
-        session.add(user)
-        session.commit()
-        session.refresh()
-    except Exception:
-        pass
+        try:
+            session.add(admin)
+            session.commit()
+            session.refresh(admin)
+        except Exception:
+            pass
 
 
 def insert_user(session: Session, user):
