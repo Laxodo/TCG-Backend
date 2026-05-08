@@ -1,10 +1,11 @@
-from app.models import UserIn, UserOut, UserBase, CardOut, UserCardOut, UserCardListOut
+from app.models import CollectionCardOut, UserIn, UserOut, UserBase, CardOut, UserCardOut, UserCardListOut
 from fastapi import APIRouter, status, HTTPException, Header, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from app.auth.auth import Token, create_access_token, verify_password, get_hash_password, decode_token, oauth2_scheme, TokenData
 from app.tools.tools import get_formated_user_card
 from app.db.database import (
-    UserDB, 
+    UserDB,
+    get_expansion_by_id, 
     insert_user,
     get_session,
     get_user_by_username, 
@@ -22,8 +23,8 @@ router = APIRouter(
 
 @router.post("/singup", status_code = status.HTTP_201_CREATED)
 async def create_user(userIn: UserIn, session = Depends(get_session)):
-    userDB = get_user_by_username(session, userIn.username)
-    if userDB is not None:
+    # Check if the username is already taken
+    if get_user_by_username(session, userIn.username) is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Username already exists"
@@ -55,6 +56,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), session = Depe
     username: str | None = form_data.username
     password: str | None = form_data.password
 
+    # Check if the username and password are provided
     if username is None or password is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -63,6 +65,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), session = Depe
 
     userFound = get_user_by_username(session, username)
 
+    # Check if the user exists and if the password is correct
     if not userFound or not verify_password(password, userFound.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -82,6 +85,7 @@ async def read_all_users(token: str = Depends(oauth2_scheme), session = Depends(
     
     data: TokenData = decode_token(token)
     
+    # Check if the user exists and if the user is admin
     if not get_user_by_id(session, data.id) or not data.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -99,15 +103,16 @@ async def read_all_users(token: str = Depends(oauth2_scheme), session = Depends(
 async def read_user(id: int, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
 
-    user = get_user_by_id(session, data.id)
-
-    if not user or not data.is_admin:
+    # Check if the user exists and if the user is admin or if the user is the same as the target user
+    if not get_user_by_id(session, data.id) or data.id is not id and not data.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden.",
         )
 
     user_target = get_user_by_id(session, id)
+
+    # Check if the target user exists
     if not user_target:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -132,11 +137,20 @@ async def read_user(id: int, token: str = Depends(oauth2_scheme), session = Depe
 )
 async def delete_user(id: int, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
+    # Check if the user exists and if the user is admin
     if not get_user_by_id(session, data.id) or not data.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden.",
         )
+    
+    # Check if the target user exists
+    if not get_user_by_id(session, id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with id {id} does not exist",
+        )
+
     remove_user_by_id(session, id)
 
 
@@ -148,10 +162,69 @@ async def delete_user(id: int, token: str = Depends(oauth2_scheme), session = De
 async def read_user_cards(id: int, expansion: int | None = None, limit: int = 10, offset: int = 0, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
 
+    # Check if the user exists and if the user is admin or if the user is the same as the target user
     if not get_user_by_id(session, data.id) or data.id is not id and not data.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden.",
+            detail="Forbidden."
+        )
+    
+    # Check if the target user exists
+    if not get_user_by_id(session, id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with id {id} does not exist",
+        )
+    
+    # Check if the expansion exists
+    if not get_expansion_by_id(session, expansion):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Expansion not found."
         )
 
     return get_formated_user_card(session, id, expansion, limit, offset)
+
+
+@router.get(
+        "/{id}/collection",
+        response_model=list[CollectionCardOut],
+        status_code=status.HTTP_200_OK
+)
+async def read_collection(id: int, expansion: int, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
+    data: TokenData = decode_token(token)
+
+    # Check if the user exists
+    if not get_user_by_id(session, data.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden."
+        )
+
+    if not get_user_by_id(session, id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with id {id} does not exist."
+        )
+
+    # Check if the expansion exists
+    if not get_expansion_by_id(session, expansion):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Expansion not found."
+        )
+
+    collection_card_list: list[CollectionCardOut] = []
+
+    for card_list in get_formated_user_card(session, id, expansion, -1, -1):
+        collection_card_list.append(
+                CollectionCardOut(
+                        id_card=card_list.card.id,
+                        card_number=card_list.card.card_number,
+                        card_name=card_list.card.name,
+                        quantity=len(card_list.user_cards),
+                        frontcard=card_list.card.frontcard,
+                    )
+            )
+
+    return collection_card_list

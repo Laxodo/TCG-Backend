@@ -132,37 +132,4 @@ async def open_boosted_pack(id: int, token: str = Depends(oauth2_scheme), sessio
 
     return [CardOut(id=card.id, id_expansion=card.id_expansion, name=card.name, rarity=card.rarity, price=card.price, card_number=card.card_number, frontcard=card.frontcard, backcard=card.backcard) for card in booster]
 
-@router.get(
-        "{id}/collection",
-        response_model=list[CollectionCardOut],
-        status_code=status.HTTP_200_OK
-)
-async def read_collection(id: int, expansion: int, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
-    data: TokenData = decode_token(token)
 
-    if not get_user_by_id(session, data.id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden."
-        )
-
-    if not get_expansion_by_id(session, expansion):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Expansion not found."
-        )
-     
-    collection_card_list: list[CollectionCardOut] = []
-
-    for card_list in get_formated_user_card(session, id, expansion, -1, -1):
-        collection_card_list.append(
-                CollectionCardOut(
-                        id_card=card_list.card.id,
-                        card_number=card_list.card.card_number,
-                        card_name=card_list.card.name,
-                        quantity=len(card_list.user_cards),
-                        frontcard=card_list.card.frontcard,
-                    )
-            )
-
-    return collection_card_list
