@@ -93,6 +93,29 @@ async def read_expansion(id: int, token: str = Depends(oauth2_scheme), session =
 
 
 @router.get(
+        "/{id}/cards",
+        response_model=list[CardOut],
+        status_code=status.HTTP_200_OK
+)
+async def read_expansion_cards(id: int, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
+    data: TokenData = decode_token(token)
+
+    if not get_user_by_id(session, data.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden."
+        )
+
+    if not get_expansion_by_id(session, id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Expansion not found."
+        )
+
+    return [CardOut(id=c.id, id_expansion=id, name=c.name, rarity=c.rarity, price=c.price, card_number=c.card_number, frontcard=c.frontcard, backcard=c.backcard) for c in get_cards_by_expansion(session, id)]
+
+
+@router.get(
         "/{id}/open-boosted", 
         response_model=list[CardOut],
         status_code=status.HTTP_200_OK

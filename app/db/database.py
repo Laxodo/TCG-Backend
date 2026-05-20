@@ -90,7 +90,7 @@ class CardDB(SQLModel, table=True):
     name: str = Field(index=True)
     rarity: str = Field(index=True)
     price: float = Field(index=True)
-    card_number: int = Field(index=True, unique=True)
+    card_number: int = Field(index=True)
     frontcard: str = Field(index=True)
     backcard: str = Field(index=True)
 
@@ -176,6 +176,10 @@ def get_expansions(session: Session) -> list[ExpansionDB]:
     cards = session.exec(select(ExpansionDB)).all()
     return cards
 
+
+def get_expansion_by_generation(session: Session, id_generation: int) -> list[ExpansionDB]:
+    expansions = session.exec(select(ExpansionDB).where(ExpansionDB.id_generation==id_generation)).all()
+    return expansions
 
 # =============== GENERATION ===============
 class GenerationDB(SQLModel, table=True):
