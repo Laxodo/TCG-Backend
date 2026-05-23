@@ -11,9 +11,12 @@ from app.db.database import (
     get_user_by_username, 
     get_user_by_id, 
     get_users, 
+    update_user,
     remove_user_by_id,
     get_user_cards,
-    get_user_cards_by_expansion
+    get_user_cards_by_expansion,
+    get_card_by_id,
+    remove_card
 )
 
 router = APIRouter(
@@ -92,7 +95,7 @@ async def read_all_users(token: str = Depends(oauth2_scheme), session = Depends(
             detail="Forbidden.",
         )
     
-    return [UserOut(id = user.id, name = user.name, username = user.username, email = user.email, exchanges = user.exchanges, money = user.money, opened_boosters = user.opened_boosters, is_admin = user.is_admin) for user in get_users(session)]
+    return [UserOut(id = user.id, name = user.name, username = user.username, email = user.email, exchanges = user.exchanges, money = user.money/100, opened_boosters = user.opened_boosters, is_admin = user.is_admin) for user in get_users(session)]
 
 
 @router.get(
@@ -124,7 +127,7 @@ async def read_user(id: int, token: str = Depends(oauth2_scheme), session = Depe
             name = user_target.name, 
             username = user_target.username, 
             email = user_target.email,
-            money = user_target.money, 
+            money = user_target.money/100, 
             opened_boosters = user_target.opened_boosters,
             exchanges = user_target.exchanges, 
             is_admin = user_target.is_admin
@@ -186,6 +189,26 @@ async def read_user_cards(id: int, expansion: int | None = None, limit: int = 10
     return get_formated_user_card(session, id, expansion, limit, offset)
 
 
+@router.post(
+    "/inventory/quick-sell",
+    status_code=status.HTTP_200_OK
+)
+async def quick_sell_cards(cards: list[int], token: str = Depends(oauth2_scheme), session = Depends(get_session)):
+    data: TokenData = decode_token(token)
+
+    # Check if the user exists
+    if not get_user_by_id(session, data.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden."
+        )
+   
+    user = get_user_by_id(session, data.id)
+
+    total_earn = sum([remove_card(session, c).price for c in cards if not get_card_by_id(session, c)])
+    update_user(session=session, id=data.id, money=user.money+total_earn)
+
+
 @router.get(
         "/{id}/collection",
         response_model=list[CollectionCardOut],
@@ -201,6 +224,7 @@ async def read_collection(id: int, expansion: int, token: str = Depends(oauth2_s
             detail="Forbidden."
         )
 
+    # Check if the targeted user exists
     if not get_user_by_id(session, id):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

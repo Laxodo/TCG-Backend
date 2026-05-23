@@ -11,7 +11,7 @@ def get_formated_user_card(session, id: int, expansion: int | None, limit: int, 
                 id_expansion = card.id_expansion,
                 name = card.name,
                 rarity = card.rarity,
-                price = card.price,
+                price = card.price/100,
                 card_number = card.card_number,
                 frontcard = card.frontcard,
                 backcard = card.backcard
@@ -23,7 +23,7 @@ def get_formated_user_card(session, id: int, expansion: int | None, limit: int, 
                 id = user_card.id,
                 id_user = user_card.id_user,
                 id_card = user_card.id_card,
-                price = user_card.price,
+                price = user_card.price/100,
                 psa = user_card.psa,
                 sold = user_card.sold
             )

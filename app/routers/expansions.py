@@ -15,7 +15,8 @@ from app.db.database import (
     get_expansion_by_name, 
     get_expansion_by_id, 
     get_expansions, 
-    get_user_by_id, 
+    get_user_by_id,
+    update_user,
     get_cards_by_expansion, 
     get_cards_by_expansion_and_rarity,
     create_user_card
@@ -48,6 +49,7 @@ async def create_expansion(ExpansionBase: ExpansionBase, token: str = Depends(oa
     insert_expansion(session, ExpansionDB(
         id_generation=ExpansionBase.id_generacion,
         name=ExpansionBase.name,
+        price=int(ExpansionBase.price*100),
         year=ExpansionBase.year
     ))
 
@@ -66,7 +68,7 @@ async def read_all_expansions(token: str = Depends(oauth2_scheme), session = Dep
             detail="Forbidden."
         )
     
-    return [ExpansionOut(id=expansion.id, id_generacion=expansion.id_generation, name=expansion.name, year=expansion.year) for expansion in get_expansions(session)]
+    return [ExpansionOut(id=expansion.id, id_generacion=expansion.id_generation, name=expansion.name, price=expansion.price/100, year=expansion.year) for expansion in get_expansions(session)]
 
 @router.get(
         "/{id}",
@@ -87,7 +89,8 @@ async def read_expansion(id: int, token: str = Depends(oauth2_scheme), session =
     return ExpansionOut(
             id=expansion_target.id, 
             id_generacion=expansion_target.id_generation, 
-            name=expansion_target.name, 
+            name=expansion_target.name,
+            price=expansion_target.price/100,
             year=expansion_target.year
         )
 
@@ -112,7 +115,7 @@ async def read_expansion_cards(id: int, token: str = Depends(oauth2_scheme), ses
             detail="Expansion not found."
         )
 
-    return [CardOut(id=c.id, id_expansion=id, name=c.name, rarity=c.rarity, price=c.price, card_number=c.card_number, frontcard=c.frontcard, backcard=c.backcard) for c in get_cards_by_expansion(session, id)]
+    return [CardOut(id=c.id, id_expansion=id, name=c.name, rarity=c.rarity, price=c.price/100, card_number=c.card_number, frontcard=c.frontcard, backcard=c.backcard) for c in get_cards_by_expansion(session, id)]
 
 
 @router.get(
@@ -124,6 +127,7 @@ async def open_boosted_pack(id: int, token: str = Depends(oauth2_scheme), sessio
     data: TokenData = decode_token(token)
     
     user = get_user_by_id(session, data.id)
+    expansion = get_expansion_by_id(session, id)
 
     if not user:
         raise HTTPException(
@@ -131,19 +135,19 @@ async def open_boosted_pack(id: int, token: str = Depends(oauth2_scheme), sessio
             detail="Forbidden."
         )
 
-    #TODO: Cantidad temporal hasta que se remplace por el precio del sobre seleccionado o poner precio estatico por sobre.
-    if user.money <  5:
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Saldo insuficiente."
-        )
-
-    if not get_expansion_by_id(session, id):
+    if not expansion:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Expansion not found."
         )
 
+    if user.money < expansion.price:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Saldo insuficiente."
+        )
+
+    update_user(session, data.id, money=user.money-expansion.price)    
 
     booster = choices(get_cards_by_expansion_and_rarity(session, id, Rarity.common), k=5)
     booster += choices(get_cards_by_expansion_and_rarity(session, id, Rarity.uncommon), k=3)
@@ -153,6 +157,6 @@ async def open_boosted_pack(id: int, token: str = Depends(oauth2_scheme), sessio
 
     [create_user_card(session, UserCardDB(id_card=c.id ,id_user=data.id, price=c.price, psa=None, sold=False)) for c in booster]
 
-    return [CardOut(id=card.id, id_expansion=card.id_expansion, name=card.name, rarity=card.rarity, price=card.price, card_number=card.card_number, frontcard=card.frontcard, backcard=card.backcard) for card in booster]
+    return [CardOut(id=card.id, id_expansion=card.id_expansion, name=card.name, rarity=card.rarity, price=card.price/100, card_number=card.card_number, frontcard=card.frontcard, backcard=card.backcard) for card in booster]
 
 

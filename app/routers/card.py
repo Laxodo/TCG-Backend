@@ -22,7 +22,7 @@ async def create_card(cardBase: CardBase, token: str = Depends(oauth2_scheme), s
         id_expansion = cardBase.id_expansion,
         name = cardBase.name,
         rarity = cardBase.rarity,
-        price = cardBase.price,
+        price = int(cardBase.price*100),
         card_number = cardBase.card_number,
         frontcard = cardBase.frontcard,
         backcard = cardBase.backcard
@@ -43,7 +43,7 @@ async def create_cards(cardBaseList: list[CardBase], token: str = Depends(oauth2
         id_expansion = cardBase.id_expansion,
         name = cardBase.name,
         rarity = cardBase.rarity,
-        price = cardBase.price,
+        price = int(cardBase.price*100),
         card_number = cardBase.card_number,
         frontcard = cardBase.frontcard,
         backcard = cardBase.backcard
@@ -64,7 +64,7 @@ async def read_all_cards(token: str = Depends(oauth2_scheme), session = Depends(
             detail="Forbidden."
         )
     
-    return [CardOut(id = card.id, id_expansion = card.id_expansion, name = card.name, rarity = card.rarity, price = card.price, card_number = card.card_number, frontcard = card.frontcard, backcard = card.backcard) for card in get_cards(session)]
+    return [CardOut(id = card.id, id_expansion = card.id_expansion, name = card.name, rarity = card.rarity, price = card.price/100, card_number = card.card_number, frontcard = card.frontcard, backcard = card.backcard) for card in get_cards(session)]
 
 
 @router.get(
@@ -88,7 +88,7 @@ async def read_card_by_id(id: int, token: str = Depends(oauth2_scheme), session 
             id_expansion = card_target.id_expansion, 
             name = card_target.name, 
             rarity = card_target.rarity,
-            price = card_target.price,
+            price = card_target.price/100,
             card_number = card_target.card_number,
             frontcard = card_target.frontcard, 
             backcard = card_target.backcard

@@ -17,7 +17,7 @@ class UserOut(BaseModel):
     name: str
     username: str
     email: str
-    money: int
+    money: float
     opened_boosters: int
     exchanges: int
     is_admin: bool
@@ -44,6 +44,7 @@ class CardOut(CardBase):
 class ExpansionBase(BaseModel):
     id_generacion: int
     name: str
+    price: float
     year: int
 
 
