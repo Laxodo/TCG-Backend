@@ -1,4 +1,4 @@
-from app.models import CollectionCardOut, UserIn, UserOut, UserBase, CardOut, UserCardOut, UserCardListOut
+from app.models import CollectionCardOut, UserIn, UserOut, UserBase, CardOut, UserCardOut, UserCardListOut, EditUser
 from fastapi import APIRouter, status, HTTPException, Header, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from app.auth.auth import Token, create_access_token, verify_password, get_hash_password, decode_token, oauth2_scheme, TokenData
@@ -131,6 +131,43 @@ async def read_user(id: int, token: str = Depends(oauth2_scheme), session = Depe
             opened_boosters = user_target.opened_boosters,
             exchanges = user_target.exchanges, 
             is_admin = user_target.is_admin
+        )
+
+
+@router.patch(
+    "/{id}",
+    status_code=status.HTTP_200_OK,
+    response_model=UserOut
+)
+async def patch_user(id: int, user: EditUser, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
+    data: TokenData = decode_token(token)
+
+    # Check if the user exists and if the user is admin
+    if not get_user_by_id(session, data.id) or not data.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden.",
+        )
+
+    # Check if the target user exists
+    if not get_user_by_id(session, id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with id {id} does not exist",
+        )
+
+    user.money = int(user.money*100)
+    updated_user = update_user(session, id, **user.model_dump())
+
+    return UserOut(
+            id = updated_user.id, 
+            name = updated_user.name, 
+            username = updated_user.username, 
+            email = updated_user.email,
+            money = updated_user.money/100, 
+            opened_boosters = updated_user.opened_boosters,
+            exchanges = updated_user.exchanges, 
+            is_admin = updated_user.is_admin
         )
 
 

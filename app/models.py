@@ -23,6 +23,16 @@ class UserOut(BaseModel):
     is_admin: bool
 
 
+class EditUser(BaseModel):
+    name: str | None
+    username: str | None
+    email: str | None
+    money: float | None
+    opened_boosters: int | None
+    exchanges: int | None
+    is_admin: bool | None
+
+
 class UserLoginIn(UserBase):
     pass
 
