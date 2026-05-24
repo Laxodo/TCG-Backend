@@ -1,4 +1,5 @@
-from app.models import CollectionCardOut, UserIn, UserOut, UserBase, CardOut, UserCardOut, UserCardListOut, EditUser
+from random import randint
+from app.models import CollectionCardOut, UserIn, UserOut, UserBase, CardOut, UserCardOut, UserCardListOut, EditUser, UserCardGradeOut
 from fastapi import APIRouter, status, HTTPException, Header, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from app.auth.auth import Token, create_access_token, verify_password, get_hash_password, decode_token, oauth2_scheme, TokenData
@@ -15,7 +16,9 @@ from app.db.database import (
     remove_user_by_id,
     get_user_cards,
     get_user_cards_by_expansion,
+    get_user_card_by_id,
     get_card_by_id,
+    update_user_card,
     remove_card
 )
 
@@ -244,6 +247,43 @@ async def quick_sell_cards(cards: list[int], token: str = Depends(oauth2_scheme)
 
     total_earn = sum([remove_card(session, c).price for c in cards if not get_card_by_id(session, c)])
     update_user(session=session, id=data.id, money=user.money+total_earn)
+
+
+@router.post(
+    "/inventory/{id}/grade",
+    status_code=status.HTTP_200_OK,
+    response_model=UserCardGradeOut
+)
+async def grade_card(id: int, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
+    data: TokenData = decode_token(token)
+    user = get_user_by_id(session, data.id)
+    user_card = get_user_card_by_id(session, id)
+
+    # Check if the user exists
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden."
+        )
+    
+    # Check if the user card exists
+    if not user_card:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User card with id {id} does not exist."
+        )
+
+    if user.money < 25:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Insufficient funds"
+        )
+
+    psa: int =  randint(1,10)
+    price: float = user_card.card.price * (1.6 ** (psa - 5))
+
+    updated_user_card = update_user_card(session, id, psa=psa, price=int(price))
+    return UserCardGradeOut(grade=updated_user_card.psa)
 
 
 @router.get(

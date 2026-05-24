@@ -93,6 +93,9 @@ class CollectionCardOut(BaseModel):
     frontcard: str
 
 
+class UserCardGradeOut(BaseModel):
+    grade: int
+
 # TODO: terminar los que quedan
 # =============== TRANSACTION ===============
 

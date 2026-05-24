@@ -144,7 +144,7 @@ async def open_boosted_pack(id: int, token: str = Depends(oauth2_scheme), sessio
     if user.money < expansion.price:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Saldo insuficiente."
+            detail="Insufficient funds."
         )
 
     update_user(session, data.id, money=user.money-expansion.price)    
