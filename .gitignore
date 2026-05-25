@@ -3,3 +3,4 @@ venv/
 myapidb_data/
 *.db
 resources/
+app/static
