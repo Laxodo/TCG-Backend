@@ -228,7 +228,6 @@ def get_generations(session: Session) -> list[GenerationDB]:
 # =============== USER_CARD ===============
 class UserCardDB(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-#    id_card: int = Field(index=True)
     id_user: int = Field(index=True)
     price: int = Field(index=True)
     psa: int | None = Field(index=True)
@@ -269,7 +268,7 @@ def update_user_card(
     id_card: int | None = None,
     price: int | None = None,
     psa: int | None = None,
-    sold: int | None = None
+    sold: bool | None = None
 ) -> UserCardDB:
     user_card = session.exec(select(UserCardDB).where(UserCardDB.id == id)).first()
     user_card.id_user = user_card.id_user if id_user is None else id_user
@@ -287,6 +286,46 @@ def remove_card(session: Session, id: int) -> UserCardDB:
     card = session.exec(select(UserCardDB).where(UserCardDB.id == id)).one()
     session.delete(card)
     return card
+
+# =============== TRANSACTION ===============
+
+class CardMarketDB(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    id_user_card: int = Field(index=True) # Offer card
+    id_card: int | None = Field(index=True) # Demanded card
+    psa: int | None = Field(default=None, index=True) # Demanded card psa
+
+    exchange_type: str = Field(index=True) # For sale or exchange
+    price: int | None = Field(default=None, index=True) # For sale price
+
+
+class ExchangeType(Enum):
+    on_sale = "on_sale"
+    on_exchange = "on_exchange"
+
+
+def create_card_offer(
+    session: Session,
+    id_user_card: int,
+    id_card: int | None = None,
+    psa: int | None = None,
+    exchange_type: int | None = None,
+    price: int | None = None
+) -> CardMarketDB:
+    session.add(CardMarketDB(id_user_card=id_user_card, id_card=id_card, psa=psa, exchange_type=exchange_type, price=price))
+
+
+def remove_card_offer(session: Session, id: int) -> None:
+    offer = session.get(CardMarketDB, id)
+    session.delete(offer)
+
+
+def read_cards_offers(session: Session) -> list[CardMarketDB]:
+    return session.exec(select(CardMarketDB)).all()
+
+
+def read_card_offer_by_id(session: Session, id: int) -> CardMarketDB:
+    return session.exec(select(CardMarketDB).where(CardMarketDB.id_user_card == id)).first()
 
 # TODO: terminar los que quedan
 # =============== TRANSACTION ===============

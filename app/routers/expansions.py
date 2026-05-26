@@ -118,45 +118,4 @@ async def read_expansion_cards(id: int, token: str = Depends(oauth2_scheme), ses
     return [CardOut(id=c.id, id_expansion=id, name=c.name, rarity=c.rarity, price=c.price/100, card_number=c.card_number, frontcard=c.frontcard, backcard=c.backcard) for c in get_cards_by_expansion(session, id)]
 
 
-@router.get(
-        "/{id}/open-boosted", 
-        response_model=list[CardOut],
-        status_code=status.HTTP_200_OK
-)
-async def open_boosted_pack(id: int, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
-    data: TokenData = decode_token(token)
-    
-    user = get_user_by_id(session, data.id)
-    expansion = get_expansion_by_id(session, id)
-
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden."
-        )
-
-    if not expansion:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Expansion not found."
-        )
-
-    if user.money < expansion.price:
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Insufficient funds."
-        )
-
-    update_user(session, data.id, money=user.money-expansion.price)    
-
-    booster = choices(get_cards_by_expansion_and_rarity(session, id, Rarity.common), k=5)
-    booster += choices(get_cards_by_expansion_and_rarity(session, id, Rarity.uncommon), k=3)
-    booster += choices(get_cards_by_expansion_and_rarity(session, id, Rarity.rare), k=1)
-    card_rarity: Rarity = choices(rarity_variable, weights=probabilities, k=1)[0]
-    booster += choices(get_cards_by_expansion_and_rarity(session, id, card_rarity), k=1)
-
-    [create_user_card(session, UserCardDB(id_card=c.id ,id_user=data.id, price=c.price, psa=None, sold=False)) for c in booster]
-
-    return [CardOut(id=card.id, id_expansion=card.id_expansion, name=card.name, rarity=card.rarity, price=card.price/100, card_number=card.card_number, frontcard=card.frontcard, backcard=card.backcard) for card in booster]
-
 
