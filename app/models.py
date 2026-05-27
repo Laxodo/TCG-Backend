@@ -96,11 +96,45 @@ class CollectionCardOut(BaseModel):
 class UserCardGradeOut(BaseModel):
     grade: int
 
+# =============== MARKET ===============
+
+class QuickSellOut(BaseModel):
+    total_earn: float
+
+
+class QuickSellIn(BaseModel):
+    card_list_id: list[int]
+
+
+class SellIn(BaseModel):
+    price: float
+
+
+class OfferOut(BaseModel):
+    id: int
+    id_user_card: int
+    exchange_type: str
+    price: float
+    id_card: int
+    psa: int | None
+
 # TODO: terminar los que quedan
-# =============== TRANSACTION ===============
+# =============== LOGACTIVITY ===============
+
+class LogActivityOut(BaseModel):
+    id_user: int
+    id_card: int
+    id_log_history: int
+    action: str
+    price: int
+    psa: int | None
 
 
+# =============== LOGHISTORY ===============
 
-# =============== TRADE ===============
-
-
+class LogHistoryOut(BaseModel):
+    id_user: int
+    id_card: int
+    action: str
+    price: int
+    psa: int | None

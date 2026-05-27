@@ -158,7 +158,7 @@ async def patch_user(id: int, user: EditUser, token: str = Depends(oauth2_scheme
             detail=f"User with id {id} does not exist",
         )
 
-    user.money = int(user.money*100)
+    user.money = int(user.money*100) if user.money is not None else user.money
     updated_user = update_user(session, id, **user.model_dump())
 
     return UserOut(

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlmodel import SQLModel, create_engine, Field, Session, select, Relationship, col
 from fastapi import Depends
 from enum import Enum
@@ -31,7 +33,7 @@ def get_session():
             raise
         finally:
             session.flush()
-            session.commit()
+        session.commit()
 
 # =============== USER ===============
 
@@ -231,7 +233,7 @@ class UserCardDB(SQLModel, table=True):
     id_user: int = Field(index=True)
     price: int = Field(index=True)
     psa: int | None = Field(index=True)
-    sold: bool = Field(index=True, default=True)
+    sold: bool = Field(index=True, default=False)
 
     id_card: int = Field(default=None, foreign_key="carddb.id")
     card: CardDB | None = Relationship(back_populates="user_cards")
@@ -249,6 +251,10 @@ def get_user_cards(session: Session, id_user: int, offset: int, limit: int) -> l
 
 def get_user_card_by_id(session: Session, id: int) -> UserCardDB:
     return session.get(UserCardDB, id)
+
+
+def get_user_card_by_card_id(session: Session, id_user: int, id_card: int, psa: int | None) -> UserCardDB:
+    return session.exec(select(UserCardDB).where(UserCardDB.id_user == id_user).where(UserCardDB.id_card == id_card).where(UserCardDB.psa == psa)).first()
 
 
 def get_user_cards_by_expansion(session: Session, id_user: int, id_expansion: int, limit: int, offset: int):
@@ -278,7 +284,7 @@ def update_user_card(
     user_card.sold = user_card.sold if sold is None else sold
     
     session.add(user_card)
-
+    session.flush()
     return user_card
 
 
@@ -291,6 +297,7 @@ def remove_card(session: Session, id: int) -> UserCardDB:
 
 class CardMarketDB(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    id_user: int = Field(index=True)
     id_user_card: int = Field(index=True) # Offer card
     id_card: int | None = Field(index=True) # Demanded card
     psa: int | None = Field(default=None, index=True) # Demanded card psa
@@ -304,33 +311,84 @@ class ExchangeType(Enum):
     on_exchange = "on_exchange"
 
 
-def create_card_offer(
-    session: Session,
-    id_user_card: int,
-    id_card: int | None = None,
-    psa: int | None = None,
-    exchange_type: int | None = None,
-    price: int | None = None
-) -> CardMarketDB:
-    session.add(CardMarketDB(id_user_card=id_user_card, id_card=id_card, psa=psa, exchange_type=exchange_type, price=price))
+GRADE_COST: int = 2500
 
+def create_offer(session: Session, card: CardMarketDB) -> CardMarketDB:
+    session.add(card)
+    session.flush()
+    return card
 
-def remove_card_offer(session: Session, id: int) -> None:
+def remove_offer(session: Session, id: int) -> None:
     offer = session.get(CardMarketDB, id)
     session.delete(offer)
 
 
-def read_cards_offers(session: Session) -> list[CardMarketDB]:
+def get_offers(session: Session) -> list[CardMarketDB]:
     return session.exec(select(CardMarketDB)).all()
 
 
-def read_card_offer_by_id(session: Session, id: int) -> CardMarketDB:
-    return session.exec(select(CardMarketDB).where(CardMarketDB.id_user_card == id)).first()
+def get_offer_by_id(session: Session, id: int) -> CardMarketDB:
+    return session.get(CardMarketDB, id)
 
-# TODO: terminar los que quedan
-# =============== TRANSACTION ===============
+# =============== LogActivity ===============
+
+class LogActivityDB(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    id_user: int = Field(index=True)
+    id_card: int = Field(index=True)
+    id_log_history: int = Field(index=True)
+    action: str = Field(index=True)
+    price: int = Field(index=True)
+    psa: int | None = Field(index=True)
 
 
+class Action(Enum):
+    GET = "get"
+    LOST = "lost"
 
-# =============== TRADE ===============
 
+def create_log_activity(session: Session, log_activity: LogActivityDB) -> LogActivityDB:
+    session.add(log_activity)
+    session.flush()
+    return log_activity
+
+
+def get_log_activity(session: Session) -> list[LogActivityDB]:
+    return session.exec(select(LogActivityDB)).all()
+
+
+def get_log_activity_by_id(session: Session, id: int) -> LogActivityDB:
+    return session.get(LogActivityDB, id)
+
+# =============== LogHistory ===============
+
+class LogHistoryDB(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    id_user: int = Field(index=True)
+    id_user_interacted: int | None = Field(index=True)
+    description: str = Field(index=True)
+    type: str = Field(index=True)
+    money_exchange: int = Field(default=0, index=True)
+    date: str | None = Field(default=datetime.now() ,index=True)
+
+
+class LogType(Enum):
+    SALE = "sale"
+    EXCHANGE = "exchange"
+    OPEN_BOOSTER = "open_booster"
+    QUICK_SELL = "quick_sell"
+    GRADE = "grade"
+
+
+def create_log_history(session: Session, log_history: LogHistoryDB) -> LogHistoryDB:
+    session.add(log_history)
+    session.flush()
+    return log_history
+
+
+def get_log_history(session: Session) -> list[LogHistoryDB]:
+    return session.exec(select(LogHistoryDB)).all()
+
+
+def get_log_history_by_id(session: Session, id: int) -> LogHistoryDB:
+    return session.get(LogHistoryDB, id)
