@@ -369,7 +369,7 @@ async def grade_card(id: int, token: str = Depends(oauth2_scheme), session = Dep
 
 
 @router.post(
-        "/boosted/{id}/open", 
+        "/boosters/{id}/open", 
         response_model=list[CardOut],
         status_code=status.HTTP_200_OK
 )

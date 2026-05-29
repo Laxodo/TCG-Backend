@@ -26,7 +26,7 @@ router = APIRouter(
     tags=["Users"]   
 )
 
-@router.post("/singup", status_code = status.HTTP_201_CREATED)
+@router.post("/signup", status_code = status.HTTP_201_CREATED)
 async def create_user(userIn: UserIn, session = Depends(get_session)):
     # Check if the username is already taken
     if get_user_by_username(session, userIn.username) is not None:
