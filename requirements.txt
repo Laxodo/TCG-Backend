@@ -4,5 +4,6 @@ uvicorn
 bcrypt
 python-jose
 python-multipart
-mariadb
 sqlmodel
+pytest
+httpx

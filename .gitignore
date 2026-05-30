@@ -1,3 +1,6 @@
 __pycache__
 venv/
 myapidb_data/
+*.db
+resources/
+app/static

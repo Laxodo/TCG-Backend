@@ -9,6 +9,7 @@ services:
       - myapi_network
     volumes:
       - ./app:/app/app
+      - ./tests:/app/tests
 
 networks:
   myapi_network:

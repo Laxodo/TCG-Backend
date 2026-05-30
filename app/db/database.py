@@ -1,18 +1,22 @@
-from sqlmodel import SQLModel, create_engine, Field, Session, select
+from datetime import datetime
+
+from sqlmodel import SQLModel, create_engine, Field, Session, select, Relationship, col
+from fastapi import Depends
+from enum import Enum
 import os
 
 DATABASE_URL = "sqlite:///app/db/data.db"
 
 class UserDB(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
+    name: str = Field(index=True)
     username: str = Field(index=True, unique=True)
     password: str = Field(index=True)  
-    name: str = Field(index=True)
     email: str = Field(index=True, unique=True)
-    money: float | None = Field(default=0.0, index=True)
-    address: str | None = Field(default=None, index=True)
+    money: int = Field(default=0, index=True)
+    opened_boosters: int = Field(default=0, index=True)
     exchanges: int | None = Field(default=0, index=True)
-
+    is_admin: bool = Field(default=False, index=True)
 
 engine = create_engine(
     DATABASE_URL,
@@ -20,32 +24,92 @@ engine = create_engine(
     connect_args={"check_same_thread": False}
 )
 
+def get_session():
+    with Session(engine) as session:
+        try:
+            yield session
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.flush()
+        session.commit()
+
+# =============== USER ===============
 
 def create_database_and_tables():
     SQLModel.metadata.create_all(engine)
 
 
-def insert_user(user):
-    with Session(engine) as session:
-        session.add(user)
-        try:
-            session.commit()
-        except Exception:
-            raise ValueError
-        session.refresh(user)
+def create_admin_user(passwd: str):
+    session: Session = next(get_session())
+    admin = UserDB(
+        name = "admin",
+        username = "admin",
+        password = passwd,
+        email = "admin@laxodo.com",
+        money = 9999999.00,
+        is_admin = True
+    )
+    try:
+        session.add(admin)
+        session.commit()
+        session.refresh(admin)
+    except Exception:
+        pass
 
 
-def get_users() -> list[UserDB]:
-    with Session(engine) as session:
-        users = session.exec(select(UserDB)).all()
-        return users
+def insert_user(session: Session, user):
+    session.add(user)
 
 
-def get_user_by_username(username: str) -> UserDB | None:
-    with Session(engine) as session:
-        users = session.exec(select(UserDB).where(UserDB.username == username)).first()
-        return users
+def get_users(session: Session) -> list[UserDB]:
+    users = session.exec(select(UserDB)).all()
+    return users
 
+
+def get_user_by_username(session: Session, username: str) -> UserDB | None:
+    user = session.exec(select(UserDB).where(UserDB.username == username)).first()
+    return user
+
+
+def get_user_by_id(session: Session, id: int) -> UserDB | None:
+    user = session.get(UserDB, id)
+    return user
+
+
+def remove_user_by_id(session: Session, id: int):
+    user = session.get(UserDB, id)
+    if not user:
+        return
+    session.delete(user)
+
+
+def update_user(
+    session: Session, 
+    id: int, 
+    name: str | None = None, 
+    username: str | None = None, 
+    password: str | None = None,
+    email: str | None = None,
+    money: int | None = None,
+    opened_boosters: int | None = None,
+    exchanges: int | None = None,
+    is_admin: bool | None = None
+) -> UserDB:
+    user = session.exec(select(UserDB).where(UserDB.id == id)).first()
+    user.id = user.id if id is None else id
+    user.name = user.name if name is None else name
+    user.username = user.username if username is None else username
+    user.password = user.password if password is None else password
+    user.email = user.email if email is None else email
+    user.money = user.money if money is None else money
+    user.opened_boosters = user.opened_boosters if opened_boosters is None else opened_boosters
+    user.exchanges = user.exchanges if exchanges is None else exchanges
+    user.is_admin = user.is_admin if is_admin is None else is_admin
+
+    session.add(user)
+    return user
 
 # =============== CARD ===============
 
@@ -54,60 +118,88 @@ class CardDB(SQLModel, table=True):
     id_expansion: int = Field(index=True)
     name: str = Field(index=True)
     rarity: str = Field(index=True)
+    price: int = Field(index=True)
+    card_number: int = Field(index=True)
     frontcard: str = Field(index=True)
     backcard: str = Field(index=True)
 
-
-def insert_card(card):
-    with Session(engine) as session:
-        session.add(card)
-        try:
-            session.commit()
-        except Exception:
-            raise ValueError
-        session.refresh(card)
+    user_cards: list["UserCardDB"] = Relationship(back_populates="card")
 
 
-def get_cards() -> list[CardDB]:
-    with Session(engine) as session:
-        cards = session.exec(select(CardDB)).all()
-        return cards
+class Rarity(Enum):
+    common = "Common"
+    uncommon = "Uncommon"
+    rare = "Rare"
+    rare_holo = "Rare Holo"
+    rainbow_rare = "Rainbow Rare"
+    ultra_rare = "Ultra Rare"
+    hyper_rare = "Hyper Rare"
 
 
-def get_card_by_name(name: str) -> CardDB | None:
-    with Session(engine) as session:
-        card = session.exec(select(CardDB).where(CardDB.name == name)).first()
-        return card
+rarity_variable: Enum = [Rarity.rare, Rarity.rare_holo, Rarity.rainbow_rare, Rarity.ultra_rare, Rarity.hyper_rare]
+probabilities: list[int] = [70, 15, 10, 4, 1]
+
+
+def insert_card(session: Session, card):
+    session.add(card)
+
+
+def get_cards(session: Session) -> list[CardDB]:
+    cards = session.exec(select(CardDB)).all()
+    return cards
+
+
+def get_card_by_name(session: Session, name: str) -> CardDB | None:
+    card = session.exec(select(CardDB).where(CardDB.name == name)).first()
+    return card
+
+
+def get_card_by_id(session: Session, id: int) -> CardDB | None:
+    card = session.get(CardDB, id)
+    return card
+
+
+def get_cards_by_expansion(session: Session, id_expansion: int) -> list[CardDB]:
+    cards = session.exec(select(CardDB).where(CardDB.id_expansion == id_expansion)).all()
+    return cards
+
+
+def get_cards_by_expansion_and_rarity(session: Session, id_expansion: int, rarity: Rarity) -> list[CardDB]:
+    cards = session.exec(select(CardDB).where(CardDB.id_expansion == id_expansion).where(CardDB.rarity == rarity.value)).all()
+    return cards
+
 
 # =============== EXPANSION ===============
 class ExpansionDB(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     id_generation: int = Field(index=True)
     name: str = Field(index=True)
+    price: int = Field(index=True)
     year: int = Field(index=True)
 
 
-def insert_expansion(expansion):
-    with Session(engine) as session:
-        session.add(expansion)
-        try:
-            session.commit()
-        except Exception:
-            raise ValueError
-        session.refresh(expansion)
+def insert_expansion(session: Session, expansion):
+    session.add(expansion)
 
 
-def get_expansion_by_name(name: str) -> ExpansionDB | None:
-    with Session(engine) as session:
-        card = session.exec(select(ExpansionDB).where(ExpansionDB.name == name)).first()
-        return card
+def get_expansion_by_name(session: Session, name: str) -> ExpansionDB | None:
+    card = session.exec(select(ExpansionDB).where(ExpansionDB.name == name)).first()
+    return card
 
 
-def get_expansions() -> list[ExpansionDB]:
-    with Session(engine) as session:
-        cards = session.exec(select(ExpansionDB)).all()
-        return cards
+def get_expansion_by_id(session: Session, id: int) -> ExpansionDB | None:
+    card = session.get(ExpansionDB, id)
+    return card
 
+
+def get_expansions(session: Session) -> list[ExpansionDB]:
+    cards = session.exec(select(ExpansionDB)).all()
+    return cards
+
+
+def get_expansion_by_generation(session: Session, id_generation: int) -> list[ExpansionDB]:
+    expansions = session.exec(select(ExpansionDB).where(ExpansionDB.id_generation==id_generation)).all()
+    return expansions
 
 # =============== GENERATION ===============
 class GenerationDB(SQLModel, table=True):
@@ -116,69 +208,187 @@ class GenerationDB(SQLModel, table=True):
     year: int = Field(index=True)
 
 
-def insert_generation(generations):
-    with Session(engine) as session:
-        session.add(generations)
-        try:
-            session.commit()
-        except Exception:
-            raise ValueError
-        session.refresh(generations)
+def insert_generation(session: Session, generations):
+    session.add(generations)
 
 
-def get_generation_by_name(name: str) -> GenerationDB | None:
-    with Session(engine) as session:
-        card = session.exec(select(GenerationDB).where(GenerationDB.name == name)).first()
-        return card
+def get_generation_by_name(session: Session, name: str) -> GenerationDB | None:
+    card = session.exec(select(GenerationDB).where(GenerationDB.name == name)).first()
+    return card
 
 
-def get_generations() -> list[GenerationDB]:
-    with Session(engine) as session:
-        cards = session.exec(select(GenerationDB)).all()
-        return cards
+def get_generation_by_id(session: Session, id: int) -> GenerationDB | None:
+    card = session.get(GenerationDB, id)
+    return card
 
 
-# =============== CARD_USER ===============
-class CardUserDB(SQLModel, table=True):
+def get_generations(session: Session) -> list[GenerationDB]:
+    cards = session.exec(select(GenerationDB)).all()
+    return cards
+
+
+# =============== USER_CARD ===============
+class UserCardDB(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     id_user: int = Field(index=True)
-    id_card: int = Field(index=True)
-    psa = float | None = Field(default=0.0, index=True)
-    sold = bool = Field(index=True)
-    price = float | None = Field(default=None, index=True)
+    price: int = Field(index=True)
+    psa: int | None = Field(index=True)
+    sold: bool = Field(index=True, default=False)
+
+    id_card: int = Field(default=None, foreign_key="carddb.id")
+    card: CardDB | None = Relationship(back_populates="user_cards")
 
 
-def insert_cardUser(cardUser):
-    with Session(engine) as session:
-        session.add(cardUser)
-        try:
-            session.commit()
-        except Exception:
-            raise ValueError
-        session.refresh(cardUser)
+def create_user_card(session: Session, user_card) -> None:
+    session.add(user_card)
 
 
-def get_cardsUser() -> list[CardUserDB]:
-    with Session(engine) as session:
-        cardsUser = session.exec(select(CardUserDB)).all()
-        return cardsUser
+def get_user_cards(session: Session, id_user: int, offset: int, limit: int) -> list[UserCardDB]:
+    user_cards = session.exec(select(UserCardDB).where(UserCardDB.id_user == id_user).offset(offset).limit(limit)).all()
+    id_cards: set = set([card.id_card for card in user_cards])
+    cards = session.exec(select(CardDB).where(col(CardDB.id).in_(list(id_cards)))).all()
+    return [user_cards, cards]
+
+def get_user_card_by_id(session: Session, id: int) -> UserCardDB:
+    return session.get(UserCardDB, id)
 
 
-def get_card_by_user(id_user: int) -> CardUserDB | None:
-    with Session(engine) as session:
-        cards = session.exec(select(CardUserDB).where(CardUserDB.id_user == id_user)).all()
-        return cards
-
-# TODO: terminar los que quedan
-# =============== USER_CARD ===============
+def get_user_card_by_card_id(session: Session, id_user: int, id_card: int, psa: int | None) -> UserCardDB:
+    return session.exec(select(UserCardDB).where(UserCardDB.id_user == id_user).where(UserCardDB.id_card == id_card).where(UserCardDB.psa == psa)).first()
 
 
+def get_user_cards_by_expansion(session: Session, id_user: int, id_expansion: int, limit: int, offset: int):
+    statement = select(UserCardDB).join(CardDB, UserCardDB.id_card == CardDB.id)
+    statement = statement.where(UserCardDB.id_user == id_user).where(CardDB.id_expansion == id_expansion)
+    statement = statement.offset(offset).limit(limit)
+    user_cards = session.exec(statement).all()
+    id_cards: set = set([card.id_card for card in user_cards])
+    cards = session.exec(select(CardDB).where(col(CardDB.id).in_(list(id_cards)))).all()
+    return [user_cards, cards]
+
+
+def update_user_card(
+    session: Session,
+    id: int | None = None,
+    id_user: int | None = None,
+    id_card: int | None = None,
+    price: int | None = None,
+    psa: int | None = None,
+    sold: bool | None = None
+) -> UserCardDB:
+    user_card = session.exec(select(UserCardDB).where(UserCardDB.id == id)).first()
+    user_card.id_user = user_card.id_user if id_user is None else id_user
+    user_card.id_card = user_card.id_card if id_card is None else id_card
+    user_card.price = user_card.price if price is None else price
+    user_card.psa = user_card.psa if psa is None else psa
+    user_card.sold = user_card.sold if sold is None else sold
+    
+    session.add(user_card)
+    session.flush()
+    return user_card
+
+
+def remove_card(session: Session, id: int) -> UserCardDB:
+    card = session.exec(select(UserCardDB).where(UserCardDB.id == id)).one()
+    session.delete(card)
+    return card
 
 # =============== TRANSACTION ===============
 
+class CardMarketDB(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    id_user: int = Field(index=True)
+    id_user_card: int = Field(index=True) # Offer card
+    id_card: int | None = Field(index=True) # Demanded card
+    psa: int | None = Field(default=None, index=True) # Demanded card psa
+
+    exchange_type: str = Field(index=True) # For sale or exchange
+    price: int | None = Field(default=None, index=True) # For sale price
 
 
-# =============== TRADE ===============
+class ExchangeType(Enum):
+    on_sale = "on_sale"
+    on_exchange = "on_exchange"
 
 
+GRADE_COST: int = 2500
 
+def create_offer(session: Session, card: CardMarketDB) -> CardMarketDB:
+    session.add(card)
+    session.flush()
+    return card
+
+def remove_offer(session: Session, id: int) -> None:
+    offer = session.get(CardMarketDB, id)
+    session.delete(offer)
+
+
+def get_offers(session: Session) -> list[CardMarketDB]:
+    return session.exec(select(CardMarketDB)).all()
+
+
+def get_offer_by_id(session: Session, id: int) -> CardMarketDB:
+    return session.get(CardMarketDB, id)
+
+# =============== LogActivity ===============
+
+class LogActivityDB(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    id_user: int = Field(index=True)
+    id_card: int = Field(index=True)
+    id_log_history: int = Field(index=True)
+    action: str = Field(index=True)
+    price: int = Field(index=True)
+    psa: int | None = Field(index=True)
+
+
+class Action(Enum):
+    GET = "get"
+    LOST = "lost"
+
+
+def create_log_activity(session: Session, log_activity: LogActivityDB) -> LogActivityDB:
+    session.add(log_activity)
+    session.flush()
+    return log_activity
+
+
+def get_log_activity(session: Session) -> list[LogActivityDB]:
+    return session.exec(select(LogActivityDB)).all()
+
+
+def get_log_activity_by_id(session: Session, id: int) -> LogActivityDB:
+    return session.get(LogActivityDB, id)
+
+# =============== LogHistory ===============
+
+class LogHistoryDB(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    id_user: int = Field(index=True)
+    id_user_interacted: int | None = Field(index=True)
+    description: str = Field(index=True)
+    type: str = Field(index=True)
+    money_exchange: int = Field(default=0, index=True)
+    date: str | None = Field(default=datetime.now() ,index=True)
+
+
+class LogType(Enum):
+    SALE = "sale"
+    EXCHANGE = "exchange"
+    OPEN_BOOSTER = "open_booster"
+    QUICK_SELL = "quick_sell"
+    GRADE = "grade"
+
+
+def create_log_history(session: Session, log_history: LogHistoryDB) -> LogHistoryDB:
+    session.add(log_history)
+    session.flush()
+    return log_history
+
+
+def get_log_history(session: Session) -> list[LogHistoryDB]:
+    return session.exec(select(LogHistoryDB)).all()
+
+
+def get_log_history_by_id(session: Session, id: int) -> LogHistoryDB:
+    return session.get(LogHistoryDB, id)
