@@ -1,4 +1,4 @@
-from app.db.database import get_user_cards, get_user_cards_by_expansion
+from app.db.usercard import get_user_cards, get_user_cards_by_expansion
 from app.models import CardOut, UserCardListOut, UserCardOut
 
 def get_formated_user_card(session, id: int, expansion: int | None, limit: int, offset: int):

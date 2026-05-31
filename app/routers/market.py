@@ -2,37 +2,16 @@ from random import randint, choices
 from app.tools.verifiers import verify_expansion, verify_offer, verify_offer_owner, verify_offer_self_owner, verify_user, verify_user_card_for_sale, verify_user_card_owner, verify_user_card_psa_target, verify_user_card_target, verify_user_currency, verify_user_target, verify_user_card
 from app.tools.logs import buy_card_logs, exchange_card_logs, grade_cards_logs
 from fastapi import APIRouter, status, Depends
-from app.models import OfferOut, QuickSellIn, QuickSellOut, SellIn, UserCardGradeOut, CardOut
+from app.models import BoostedPackOut, ExchangeIn, OfferListOut, OfferOut, QuickSellIn, QuickSellOut, SellIn, UserCardGradeOut, CardOut
 from app.auth.auth import decode_token, oauth2_scheme, TokenData
-from app.db.database import (
-    GRADE_COST,
-    Action,
-    CardMarketDB,
-    ExchangeType,
-    LogActivityDB,
-    LogHistoryDB,
-    LogType,
-    Rarity,
-    UserCardDB,
-    create_log_activity,
-    create_log_history,
-    rarity_variable,
-    probabilities,
-    get_session,
-    create_user_card,
-    get_user_by_id, 
-    get_user_card_by_id,
-    get_user_card_by_card_id,
-    get_expansion_by_id,
-    get_cards_by_expansion_and_rarity,
-    update_user, 
-    update_user_card, 
-    remove_card,
-    create_offer,
-    remove_offer,
-    get_offers,
-    get_offer_by_id
-) 
+from app.db.card import PROBABILITIES, RARITY_VARIABLE, Rarity, get_cards_by_expansion_and_rarity
+from app.db.cardmarket import GRADE_COST, CardMarketDB, ExchangeType, create_offer, get_offer_by_id, get_offers, remove_offer
+from app.db.database import get_session
+from app.db.expansion import get_expansion_by_id
+from app.db.logactivity import Action, LogActivityDB, create_log_activity
+from app.db.loghistory import LogHistoryDB, LogType, create_log_history
+from app.db.user import get_user_by_id, update_user
+from app.db.usercard import UserCardDB, create_user_card, get_user_card_by_card_id, get_user_card_by_id, remove_card, update_user_card
 
 router = APIRouter(
     prefix="/market",
@@ -146,7 +125,7 @@ async def buy_card(id: int, token: str = Depends(oauth2_scheme), session = Depen
 @router.get(
     "/offers",
     status_code=status.HTTP_200_OK,
-    response_model=list[OfferOut]
+    response_model=OfferListOut
 )
 async def read_offer(token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
@@ -154,7 +133,21 @@ async def read_offer(token: str = Depends(oauth2_scheme), session = Depends(get_
     # Check if the user exists
     verify_user(get_user_by_id(session, data.id))
 
-    return [OfferOut(**offer) for offer in get_offers(session)]
+    return OfferListOut(
+        offers=[
+            OfferOut(
+                id=offer.id, 
+                id_card=offer.id_card, 
+                id_user_card=offer.id_user_card, 
+                exchange_type=offer.exchange_type, 
+                image_card_offer=offer.user_card.card.frontcard if offer.user_card and offer.user_card.card else None, 
+                image_card_demanded=offer.card.frontcard if offer.card else None, 
+                price=offer.price/100, 
+                psa=offer.psa
+            ) 
+            for offer in get_offers(session)
+        ]
+    )
 
 
 @router.get(
@@ -193,7 +186,7 @@ async def cancel_offer(id: int, token: str = Depends(oauth2_scheme), session = D
     "/cards/{id}/exchange",
     status_code=status.HTTP_200_OK
 )
-async def exchange_card(id: int, id_card: int, psa: int | None = None, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
+async def exchange_card(id: int, target: ExchangeIn, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
     user_card = verify_user_card(get_user_card_by_id(session, id)) # Check if the user card exists
 
@@ -201,7 +194,7 @@ async def exchange_card(id: int, id_card: int, psa: int | None = None, token: st
     verify_user(get_user_by_id(session, data.id)) 
 
     # Update database
-    create_offer(session, CardMarketDB(id_user=data.id, id_user_card=user_card.id, id_card=id_card, psa=psa, exchange_type=ExchangeType.on_exchange.value))
+    create_offer(session, CardMarketDB(id_user=data.id, id_user_card=user_card.id, id_card=target.id_card, psa=target.psa, exchange_type=ExchangeType.on_exchange.value))
     update_user_card(session, id, sold=True)
 
 
@@ -233,7 +226,7 @@ async def grade_card(id: int, token: str = Depends(oauth2_scheme), session = Dep
 
 @router.post(
         "/boosters/{id}/open", 
-        response_model=list[CardOut],
+        response_model=BoostedPackOut,
         status_code=status.HTTP_200_OK
 )
 async def open_boosted_pack(id: int, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
@@ -250,7 +243,7 @@ async def open_boosted_pack(id: int, token: str = Depends(oauth2_scheme), sessio
     booster = choices(get_cards_by_expansion_and_rarity(session, id, Rarity.common), k=5)
     booster += choices(get_cards_by_expansion_and_rarity(session, id, Rarity.uncommon), k=3)
     booster += choices(get_cards_by_expansion_and_rarity(session, id, Rarity.rare), k=1)
-    card_rarity: Rarity = choices(rarity_variable, weights=probabilities, k=1)[0]
+    card_rarity: Rarity = choices(RARITY_VARIABLE, weights=PROBABILITIES, k=1)[0]
     booster += choices(get_cards_by_expansion_and_rarity(session, id, card_rarity), k=1)
 
     # Logs
@@ -277,4 +270,4 @@ async def open_boosted_pack(id: int, token: str = Depends(oauth2_scheme), sessio
             )
         )
 
-    return [CardOut(id=card.id, id_expansion=card.id_expansion, name=card.name, rarity=card.rarity, price=card.price/100, card_number=card.card_number, frontcard=card.frontcard, backcard=card.backcard) for card in booster]
+    return BoostedPackOut(booster=[CardOut(id=card.id, id_expansion=card.id_expansion, name=card.name, rarity=card.rarity, price=card.price/100, card_number=card.card_number, frontcard=card.frontcard, backcard=card.backcard) for card in booster])

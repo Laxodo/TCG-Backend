@@ -1,21 +1,13 @@
-from app.models import CollectionCardOut, UserIn, UserOut, UserCardListOut, EditUser
+from app.models import CollectionCardOut, CollectionListOut, InventoryCardOut, UserIn, UserListOut, UserOut, EditUser
 from app.tools.verifiers import verify_expansion, verify_user, verify_user_admin, verify_user_email, verify_user_target, verify_user_username
 from fastapi import APIRouter, status, HTTPException, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from app.auth.auth import Token, create_access_token, verify_password, get_hash_password, decode_token, oauth2_scheme, TokenData
 from app.tools.tools import get_formated_user_card
-from app.db.database import (
-    UserDB,
-    get_expansion_by_id,
-    get_user_by_email, 
-    insert_user,
-    get_session,
-    get_user_by_username, 
-    get_user_by_id, 
-    get_users, 
-    update_user,
-    remove_user_by_id
-)
+from app.db.database import get_session
+from app.db.expansion import get_expansion_by_id
+from app.db.user import UserDB, get_user_by_email, get_user_by_id, get_user_by_username, get_users, insert_user, remove_user_by_id, update_user
+
 
 router = APIRouter(
     prefix="/users",
@@ -71,7 +63,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), session = Depe
 
 @router.get(
     "/",
-    response_model = list[UserOut],
+    response_model = UserListOut,
     status_code = status.HTTP_200_OK
 )
 async def read_all_users(token: str = Depends(oauth2_scheme), session = Depends(get_session)):
@@ -81,7 +73,7 @@ async def read_all_users(token: str = Depends(oauth2_scheme), session = Depends(
     user = verify_user(get_user_by_id(session, data.id)) # Check if the user exists
     verify_user_admin(user.is_admin) # Check if the user is admin
     
-    return [UserOut(id = user.id, name = user.name, username = user.username, email = user.email, exchanges = user.exchanges, money = user.money/100, opened_boosters = user.opened_boosters, is_admin = user.is_admin) for user in get_users(session)]
+    return UserListOut(users=[UserOut(id = user.id, name = user.name, username = user.username, email = user.email, exchanges = user.exchanges, money = user.money/100, opened_boosters = user.opened_boosters, is_admin = user.is_admin) for user in get_users(session)])
 
 
 @router.get(
@@ -158,7 +150,7 @@ async def delete_user(id: int, token: str = Depends(oauth2_scheme), session = De
 
 @router.get(
     "/{id}/inventory",
-    response_model = list[UserCardListOut],
+    response_model = InventoryCardOut,
     status_code = status.HTTP_200_OK
 )
 async def read_user_cards(id: int, expansion: int | None = None, limit: int = 10, offset: int = 0, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
@@ -175,12 +167,12 @@ async def read_user_cards(id: int, expansion: int | None = None, limit: int = 10
     verify_user_target(get_user_by_id(session, id)) # Check if the target user exists
     verify_expansion(get_expansion_by_id(session, expansion)) # Check if the expansion exists
 
-    return get_formated_user_card(session, id, expansion, limit, offset)
+    return InventoryCardOut(cards=get_formated_user_card(session, id, expansion, limit, offset))
 
 
 @router.get(
         "/{id}/collection",
-        response_model=list[CollectionCardOut],
+        response_model=CollectionListOut,
         status_code=status.HTTP_200_OK
 )
 async def read_collection(id: int, expansion: int, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
@@ -191,17 +183,6 @@ async def read_collection(id: int, expansion: int, token: str = Depends(oauth2_s
     verify_user_target(get_user_by_id(session, id)) # Check if the target user exists
     verify_expansion(get_expansion_by_id(session, expansion)) # Check if the expansion exists
 
-    collection_card_list: list[CollectionCardOut] = []
-
-    for card_list in get_formated_user_card(session, id, expansion, -1, -1):
-        collection_card_list.append(
-                CollectionCardOut(
-                        id_card=card_list.card.id,
-                        card_number=card_list.card.card_number,
-                        card_name=card_list.card.name,
-                        quantity=len(card_list.user_cards),
-                        frontcard=card_list.card.frontcard,
-                    )
-            )
-
-    return collection_card_list
+    return CollectionListOut(
+        collection=[CollectionCardOut(id_card=c.id, card_number=c.card_number, card_name=c.card.name, quantity=len(c.user_cards), frontcard=c.card.frontcard) for c in get_formated_user_card(session, id, expansion, -1, -1)]
+    )

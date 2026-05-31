@@ -1,8 +1,8 @@
 from app.auth.auth import decode_token, oauth2_scheme, TokenData
+from app.db.database import get_session
+from app.db.user import get_user_by_id
 from app.tools.verifiers import verify_user, verify_user_admin
 from fastapi import APIRouter, status, HTTPException, Depends, UploadFile
-from fastapi.security import OAuth2PasswordRequestForm
-from app.db.database import get_user_by_id, get_session
 from os import listdir
 
 router = APIRouter(

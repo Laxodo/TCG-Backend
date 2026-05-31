@@ -1,7 +1,9 @@
-from app.models import CardBase, CardOut
-from app.db.database import CardDB, insert_card, get_card_by_id, get_cards, get_user_by_id, get_session
+from app.db.card import CardDB, get_card_by_id, get_cards, insert_card
+from app.db.database import get_session
+from app.db.user import get_user_by_id
+from app.models import CardBase, CardListOut, CardOut
 from app.tools.verifiers import verify_card, verify_user, verify_user_admin
-from fastapi import APIRouter, status, HTTPException, Depends
+from fastapi import APIRouter, status, Depends
 from app.auth.auth import decode_token, oauth2_scheme, TokenData
 
 router = APIRouter(
@@ -49,7 +51,7 @@ async def create_cards(cardBaseList: list[CardBase], token: str = Depends(oauth2
 
 @router.get(
         "/",
-        response_model = list[CardOut], 
+        response_model = CardListOut, 
         status_code = status.HTTP_200_OK
 )
 async def read_all_cards(token: str = Depends(oauth2_scheme), session = Depends(get_session)):
@@ -58,7 +60,7 @@ async def read_all_cards(token: str = Depends(oauth2_scheme), session = Depends(
     # Verifiers
     verify_user(get_user_by_id(session, data.id)) # Check if the user exists
 
-    return [CardOut(id = card.id, id_expansion = card.id_expansion, name = card.name, rarity = card.rarity, price = card.price/100, card_number = card.card_number, frontcard = card.frontcard, backcard = card.backcard) for card in get_cards(session)]
+    return CardListOut(cards=[CardOut(id = card.id, id_expansion = card.id_expansion, name = card.name, rarity = card.rarity, price = card.price/100, card_number = card.card_number, frontcard = card.frontcard, backcard = card.backcard) for card in get_cards(session)])
 
 
 @router.get(

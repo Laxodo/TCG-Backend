@@ -1,5 +1,11 @@
+from app.db.card import CardDB
+from app.db.cardmarket import CardMarketDB
+from app.db.expansion import ExpansionDB
+from app.db.generation import GenerationDB
+from app.db.user import UserDB
+from app.db.usercard import UserCardDB
 from fastapi import HTTPException, status
-from app.db.database import CardDB, CardMarketDB, ExpansionDB, GenerationDB, UserDB, UserCardDB
+
 
 # ========================== USER ==========================
 
@@ -42,7 +48,7 @@ def verify_user_target(user: UserDB) -> UserDB:
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with id {user.id} does not exist."
+            detail=f"User not found."
         )
     return user
 
@@ -60,7 +66,7 @@ def verify_card(card: CardDB) -> CardDB:
     if not card:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Card with id {card.id} does not exist."
+            detail=f"Card not found."
         )
     return card
 
@@ -80,7 +86,7 @@ def verify_expansion(expansion: ExpansionDB) -> ExpansionDB:
     if not expansion:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Expansion with id {expansion.id} not found."
+            detail=f"Expansion not found."
         )
     return expansion
 
@@ -99,7 +105,7 @@ def verify_generation(generation: GenerationDB) -> GenerationDB:
     if not generation:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Generation with id {generation.id} not found."
+            detail=f"Generation not found."
         )
     return generation
 
@@ -119,7 +125,7 @@ def verify_user_card(user_card: UserCardDB) -> UserCardDB:
     if not user_card:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User card with id {user_card.id} does not exist."
+            detail=f"User card not found."
         )
     return user_card
 
@@ -162,7 +168,7 @@ def verify_offer(offer: CardMarketDB) -> CardMarketDB:
     if not offer:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Offer with id {id} does not exist."
+            detail=f"Offer not found."
         )
     return offer
     

@@ -1,7 +1,10 @@
-from app.models import GenerationBase, GenerationOut, ExpansionOut
-from app.db.database import GenerationDB, get_user_by_id, insert_generation, get_generation_by_name, get_generation_by_id, get_generations, get_user_by_username, get_session, get_expansion_by_generation
+from app.db.database import get_session
+from app.db.expansion import get_expansion_by_generation
+from app.db.generation import GenerationDB, get_generation_by_id, get_generation_by_name, get_generations, insert_generation
+from app.db.user import get_user_by_id
+from app.models import ExpansionListOut, GenerationBase, GenerationListOut, GenerationOut, ExpansionOut
 from app.tools.verifiers import verify_generation, verify_generation_exists, verify_generation_exists, verify_user, verify_user_admin
-from fastapi import APIRouter, status, HTTPException, Depends
+from fastapi import APIRouter, status, Depends
 from app.auth.auth import decode_token, oauth2_scheme, TokenData
 
 router = APIRouter(
@@ -26,7 +29,7 @@ async def create_generation(gen_base: GenerationBase, token: str = Depends(oauth
 
 @router.get(
         "/", 
-        response_model=list[GenerationOut], 
+        response_model=GenerationListOut, 
         status_code=status.HTTP_200_OK
 )
 async def read_all_generations(token: str = Depends(oauth2_scheme), session = Depends(get_session)):
@@ -34,7 +37,7 @@ async def read_all_generations(token: str = Depends(oauth2_scheme), session = De
 
     verify_user(get_user_by_id(session, data.id)) # Check if the user exists
     
-    return [GenerationOut(id=gen.id, name=gen.name, year=gen.year) for gen in get_generations(session)]
+    return GenerationListOut(generations=[GenerationOut(id=gen.id, name=gen.name, year=gen.year) for gen in get_generations(session)])
 
 
 @router.get(
@@ -59,7 +62,7 @@ async def read_generation(id: int, token = Depends(oauth2_scheme), session = Dep
 
 @router.get(
     "/{id}/expansions",
-    response_model=list[ExpansionOut],
+    response_model=ExpansionListOut,
     status_code=status.HTTP_200_OK
 )
 async def read_generation_expansions(id: int, token = Depends(oauth2_scheme), session = Depends(get_session)):
@@ -69,4 +72,4 @@ async def read_generation_expansions(id: int, token = Depends(oauth2_scheme), se
     verify_user(get_user_by_id(session, data.id)) # Check if the user exists
     verify_generation(get_generation_by_id(session, id)) # Check if the generation exists
 
-    return [ExpansionOut(id=e.id, id_generacion=id, name=e.name, year=e.year) for e in get_expansion_by_generation(session, id)]
+    return ExpansionListOut(expansions=[ExpansionOut(id=e.id, id_generacion=id, name=e.name, year=e.year) for e in get_expansion_by_generation(session, id)])
