@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-#TODO: implementar los dto para devolver la informacion para no devolver objetos de la base de datos
 
 #=============== USER ===============
 class UserBase(BaseModel):
@@ -118,7 +117,6 @@ class OfferOut(BaseModel):
     id_card: int
     psa: int | None
 
-# TODO: terminar los que quedan
 # =============== LOGACTIVITY ===============
 
 class LogActivityOut(BaseModel):

@@ -1,6 +1,7 @@
 from random import randint, choices
+from app.tools.verifiers import verify_expansion, verify_offer, verify_offer_owner, verify_offer_self_owner, verify_user, verify_user_card_for_sale, verify_user_card_owner, verify_user_card_psa_target, verify_user_card_target, verify_user_currency, verify_user_target, verify_user_card
 from app.tools.logs import buy_card_logs, exchange_card_logs, grade_cards_logs
-from fastapi import APIRouter, status, HTTPException, Depends
+from fastapi import APIRouter, status, Depends
 from app.models import OfferOut, QuickSellIn, QuickSellOut, SellIn, UserCardGradeOut, CardOut
 from app.auth.auth import decode_token, oauth2_scheme, TokenData
 from app.db.database import (
@@ -18,7 +19,6 @@ from app.db.database import (
     rarity_variable,
     probabilities,
     get_session,
-    get_card_by_id,
     create_user_card,
     get_user_by_id, 
     get_user_card_by_id,
@@ -46,17 +46,10 @@ router = APIRouter(
 )
 async def quick_sell_cards(cards: QuickSellIn, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
-    user = get_user_by_id(session, data.id)
-
-    # Check if the user exists
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden."
-        )
-
+    user = verify_user(get_user_by_id(session, data.id)) # Get user and check if the user exists
     total_earn: int = 0
 
+    # Log
     log = create_log_history(
         session,
         LogHistoryDB(
@@ -92,35 +85,12 @@ async def quick_sell_cards(cards: QuickSellIn, token: str = Depends(oauth2_schem
 )
 async def sell_card(id: int, card: SellIn, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
-    user_card = get_user_card_by_id(session, id)
+    user_card = verify_user_card(get_user_card_by_id(session, id))
 
-    # Check if the user exists
-    if not get_user_by_id(session, data.id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden."
-        )
-
-    # Check if the user card exists
-    if not user_card:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User card with id {id} does not exist."
-        )
-
-    # Check if the user card is owned by the user
-    if user_card.id_user != data.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden."
-        )
-
-    # Check if the target user card is for sale
-    if user_card.sold is True:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="User card already for sale."
-        )
+    # Verifiers
+    verify_user(get_user_by_id(session, data.id)) # Check if the user exists
+    verify_user_card_owner(user_card.id_user, data.id) # Check if the user card is owned by the user
+    verify_user_card_for_sale(user_card.sold) # Check if the target user card is for sale
 
     create_offer(session, CardMarketDB(id_user=data.id, id_user_card=user_card.id, exchange_type=ExchangeType.on_sale.value, price=int(card.price*100)))
     update_user_card(session, id, sold=True)
@@ -132,57 +102,19 @@ async def sell_card(id: int, card: SellIn, token: str = Depends(oauth2_scheme), 
 )
 async def buy_card(id: int, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
-    offer = get_offer_by_id(session, id)
+    offer = verify_offer(get_offer_by_id(session, id)) # Check if the offer exists
+    user_card_offer = verify_user_card(get_user_card_by_id(session, offer.id_user_card)) # Check if the user card exists
+    user_buyer = verify_user(get_user_by_id(session, data.id)) # Check if the buyer exists
+    user_seller = verify_user_target(get_user_by_id(session, user_card_offer.id_user)) # Check if the seller exists
 
-    # Check if the offer exists
-    if not offer:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Offer with id {id} does not exist."
-        )
-
-    user_card_offer = get_user_card_by_id(session, offer.id_user_card)
-
-    # Check if the user card exists
-    if not user_card_offer:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User card with id {offer.id_user_card} does not exist."
-        )
-
-    # Check if the target user card is for sale
-    if user_card_offer.sold is False:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="User card is not for sale."
-        )
-
-    user_buyer = get_user_by_id(session, data.id)
-
-    # Check if the user exists
-    if not user_buyer:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden."
-        )
-
-    user_seller = get_user_by_id(session, user_card_offer.id_user)
-
-    # Check if the seller exists
-    if not user_seller:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with id {user_card_offer.id_user} does not exist."
-        )
+    #Verifiers
+    verify_user_card_for_sale(user_card_offer.sold) # Check if the target user card is for sale
+    verify_offer_self_owner(user_buyer.id, offer.id_user) # Check if the user is the owner of the offer
 
     # Check if the offer is a sale
     if offer.exchange_type == ExchangeType.on_sale.value:
         # Check if the user have enough money
-        if user_buyer.money < offer.price:
-            raise HTTPException(
-                status_code=status.HTTP_402_PAYMENT_REQUIRED,
-                detail="User does not have enough money."
-            )
+        verify_user_currency(user_buyer.money, offer.price)
 
         # Update users
         update_user(session, data.id, money=user_buyer.money-offer.price)
@@ -195,22 +127,14 @@ async def buy_card(id: int, token: str = Depends(oauth2_scheme), session = Depen
 
     # Check if the offer is an exchange
     if offer.exchange_type == ExchangeType.on_exchange.value:
-        demanded_card = get_user_card_by_card_id(session, data.id, offer.id_card, offer.psa)
+        demanded_card = verify_user_card_target(get_user_card_by_card_id(session, data.id, offer.id_card, offer.psa)) # Check if the user have the demanded card
 
-        # Check if the user have the demanded card
-        if not demanded_card:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="User does not have the demanded card."
-            )
+        # Verifiers
+        verify_user_card_psa_target(offer.psa, demanded_card.psa) # Check if the PSA values match
 
-        # Check if the PSA values match
-        if offer.psa != demanded_card.psa:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="User does not have the demanded card."
-            )
-
+        #Update database
+        update_user(session, data.id, exchanges=user_buyer.exchanges+1)
+        update_user(session, user_seller.id, exchanges=user_seller.exchanges+1)
         update_user_card(session, user_card_offer.id, sold=False, id_user=data.id) # Send card
         update_user_card(session, demanded_card.id, sold=False, id_user=user_seller.id) # Obtain card
         remove_offer(session, offer.id)
@@ -228,11 +152,7 @@ async def read_offer(token: str = Depends(oauth2_scheme), session = Depends(get_
     data: TokenData = decode_token(token)
 
     # Check if the user exists
-    if not get_user_by_id(session, data.id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden."
-        )
+    verify_user(get_user_by_id(session, data.id))
 
     return [OfferOut(**offer) for offer in get_offers(session)]
 
@@ -246,11 +166,7 @@ async def read_offer_by_id(id: int, token: str = Depends(oauth2_scheme), session
     data: TokenData = decode_token(token)
 
     # Check if the user exists
-    if not get_user_by_id(session, data.id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden."
-        )
+    verify_user(get_user_by_id(session, data.id))
 
     return get_offer_by_id(session, id)
 
@@ -261,40 +177,14 @@ async def read_offer_by_id(id: int, token: str = Depends(oauth2_scheme), session
 )
 async def cancel_offer(id: int, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
-    offer = get_offer_by_id(session, id)
+    offer = verify_offer(get_offer_by_id(session, id)) # Check if the offer exists
+    user_card = verify_user_card(get_user_card_by_id(session, offer.id_user_card)) # Check if the user card exists
 
-    # Check if the offer exists and if the user is the owner
-    if not offer:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Offer with id {id} does not exist."
-        )
-    
-    # Check if the user is the owner of the offer
-    if offer.id_user != data.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden."
-        )
+    # Verifiers
+    verify_offer_owner(offer.id_user, data.id) # Check if the user is the owner of the offer
+    verify_user(get_user_by_id(session, data.id)) # Check if the user exists
 
-    user_card = get_user_card_by_id(session, offer.id_user_card)
-
-    # Check if the user card exists
-    if not user_card:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User card with id {offer.id_user_card} does not exist."
-        )
-    
-    # Check if the user exists
-    if not get_user_by_id(session, data.id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden."
-        )
-
-    
-
+    # Update database
     update_user_card(session, user_card.id, sold=False)
     remove_offer(session, offer.id)
 
@@ -305,22 +195,12 @@ async def cancel_offer(id: int, token: str = Depends(oauth2_scheme), session = D
 )
 async def exchange_card(id: int, id_card: int, psa: int | None = None, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
-    user_card = get_user_card_by_id(session, id)
+    user_card = verify_user_card(get_user_card_by_id(session, id)) # Check if the user card exists
 
     # Check if the user exists
-    if not get_user_by_id(session, data.id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden."
-        )
+    verify_user(get_user_by_id(session, data.id)) 
 
-    # Check if the user card exists
-    if not user_card:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User card with id {id} does not exist."
-        )
-
+    # Update database
     create_offer(session, CardMarketDB(id_user=data.id, id_user_card=user_card.id, id_card=id_card, psa=psa, exchange_type=ExchangeType.on_exchange.value))
     update_user_card(session, id, sold=True)
 
@@ -332,29 +212,12 @@ async def exchange_card(id: int, id_card: int, psa: int | None = None, token: st
 )
 async def grade_card(id: int, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
-    user = get_user_by_id(session, data.id)
-    user_card = get_user_card_by_id(session, id)
+    user = verify_user(get_user_by_id(session, data.id)) # Check if the user exists
+    user_card = verify_user_card(get_user_card_by_id(session, id)) # Check if the user card exists
 
-    # Check if the user exists
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden."
-        )
-    
-    # Check if the user card exists
-    if not user_card:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User card with id {id} does not exist."
-        )
 
     # Check if user has enough money
-    if user.money < GRADE_COST:
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Insufficient funds"
-        )
+    verify_user_currency(user.money, GRADE_COST)
 
     update_user(session, data.id, money=user.money-GRADE_COST)
 
@@ -375,33 +238,15 @@ async def grade_card(id: int, token: str = Depends(oauth2_scheme), session = Dep
 )
 async def open_boosted_pack(id: int, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
-    
-    user = get_user_by_id(session, data.id)
-    expansion = get_expansion_by_id(session, id)
-
-    # Check if user exists
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden."
-        )
-
-    # Check if expansion exists
-    if not expansion:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Expansion not found."
-        )
+    user = verify_user(get_user_by_id(session, data.id)) # Check if the user exists
+    expansion = verify_expansion(get_expansion_by_id(session, id)) # Check if the expansion exists
 
     # Check if user has enough money
-    if user.money < expansion.price:
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Insufficient funds."
-        )
+    verify_user_currency(user.money, expansion.price)
 
-    update_user(session, data.id, money=user.money-expansion.price)    
+    update_user(session, data.id, money=user.money-expansion.price, opened_boosters=user.opened_boosters+1)    
 
+    # Select radom cards for the booster pack
     booster = choices(get_cards_by_expansion_and_rarity(session, id, Rarity.common), k=5)
     booster += choices(get_cards_by_expansion_and_rarity(session, id, Rarity.uncommon), k=3)
     booster += choices(get_cards_by_expansion_and_rarity(session, id, Rarity.rare), k=1)

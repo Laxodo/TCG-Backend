@@ -73,6 +73,11 @@ def get_user_by_username(session: Session, username: str) -> UserDB | None:
     return user
 
 
+def get_user_by_email(session: Session, email: str) -> UserDB | None:
+    user = session.exec(select(UserDB).where(UserDB.email == email)).first()
+    return user
+
+
 def get_user_by_id(session: Session, id: int) -> UserDB | None:
     user = session.get(UserDB, id)
     return user
@@ -293,7 +298,7 @@ def remove_card(session: Session, id: int) -> UserCardDB:
     session.delete(card)
     return card
 
-# =============== TRANSACTION ===============
+# =============== MARKET ===============
 
 class CardMarketDB(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -330,7 +335,7 @@ def get_offers(session: Session) -> list[CardMarketDB]:
 def get_offer_by_id(session: Session, id: int) -> CardMarketDB:
     return session.get(CardMarketDB, id)
 
-# =============== LogActivity ===============
+# =============== LOGACTIVITY ===============
 
 class LogActivityDB(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -360,7 +365,7 @@ def get_log_activity(session: Session) -> list[LogActivityDB]:
 def get_log_activity_by_id(session: Session, id: int) -> LogActivityDB:
     return session.get(LogActivityDB, id)
 
-# =============== LogHistory ===============
+# =============== LOGHISTORY ===============
 
 class LogHistoryDB(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)

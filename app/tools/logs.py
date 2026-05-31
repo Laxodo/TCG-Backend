@@ -152,5 +152,3 @@ def buy_card_logs(session, user_buyer, user_seller, user_card_offer, data, offer
             psa=user_card_offer.psa
         )
     )
-
-
