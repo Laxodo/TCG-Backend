@@ -1,26 +1,11 @@
-from app.models import CardBase, ExpansionBase, ExpansionOut, CollectionCardOut, CardOut
-from fastapi import APIRouter, status, HTTPException, Depends
+from app.db.card import get_cards_by_expansion
+from app.db.database import get_session
+from app.db.expansion import ExpansionDB, get_expansion_by_id, get_expansion_by_name, get_expansions, insert_expansion
+from app.db.user import get_user_by_id
+from app.models import CardListOut, ExpansionBase, ExpansionListOut, ExpansionOut, CardOut
+from app.tools.verifiers import verify_expansion, verify_expansion_exists, verify_user, verify_user_admin
+from fastapi import APIRouter, status, Depends
 from app.auth.auth import decode_token, oauth2_scheme, TokenData
-from random import choices
-from app.tools.tools import get_formated_user_card
-from app.db.database import (
-    ExpansionDB,
-    CardDB,
-    UserCardDB,
-    Rarity,
-    rarity_variable,
-    probabilities,
-    insert_expansion, 
-    get_session,
-    get_expansion_by_name, 
-    get_expansion_by_id, 
-    get_expansions, 
-    get_user_by_id,
-    update_user,
-    get_cards_by_expansion, 
-    get_cards_by_expansion_and_rarity,
-    create_user_card
-)
 
 router = APIRouter(
     prefix = "/expansions",
@@ -31,44 +16,33 @@ router = APIRouter(
         "/", 
         status_code=status.HTTP_201_CREATED
 )
-async def create_expansion(ExpansionBase: ExpansionBase, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
+async def create_expansion(expansionBase: ExpansionBase, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
 
-    if not get_user_by_id(session, data.id) or not data.is_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden."
-        )
-
-    expansionDB = get_expansion_by_name(session, ExpansionBase.name)
-    if expansionDB:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Expansion alredy exists."
-        )
+    # Verifiers
+    user = verify_user(get_user_by_id(session, data.id)) # Check if the user exists
+    verify_user_admin(user.is_admin) # Check if the user is admin
+    verify_expansion_exists(get_expansion_by_name(session, expansionBase.name))
+    
     insert_expansion(session, ExpansionDB(
-        id_generation=ExpansionBase.id_generacion,
-        name=ExpansionBase.name,
-        price=int(ExpansionBase.price*100),
-        year=ExpansionBase.year
+        id_generation=expansionBase.id_generacion,
+        name=expansionBase.name,
+        price=int(expansionBase.price*100),
+        year=expansionBase.year
     ))
 
 
 @router.get(
         "/", 
-        response_model=list[ExpansionOut], 
+        response_model=ExpansionListOut, 
         status_code=status.HTTP_200_OK
 )
 async def read_all_expansions(token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
 
-    if not get_user_by_id(session, data.id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden."
-        )
+    verify_user(get_user_by_id(session, data.id)) # Check if the user exists
     
-    return [ExpansionOut(id=expansion.id, id_generacion=expansion.id_generation, name=expansion.name, price=expansion.price/100, year=expansion.year) for expansion in get_expansions(session)]
+    return ExpansionListOut(expansions=[ExpansionOut(id=expansion.id, id_generacion=expansion.id_generation, name=expansion.name, price=expansion.price/100, year=expansion.year) for expansion in get_expansions(session)])
 
 @router.get(
         "/{id}",
@@ -78,13 +52,9 @@ async def read_all_expansions(token: str = Depends(oauth2_scheme), session = Dep
 async def read_expansion(id: int, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
 
-    if not get_user_by_id(session, data.id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden."
-        )
-
-    expansion_target = get_expansion_by_id(session, id)
+    # Verifiers
+    verify_user(get_user_by_id(session, data.id)) # Check if the user exists
+    expansion_target = verify_expansion(get_expansion_by_id(session, id)) # Check if the expansion exists
 
     return ExpansionOut(
             id=expansion_target.id, 
@@ -97,25 +67,17 @@ async def read_expansion(id: int, token: str = Depends(oauth2_scheme), session =
 
 @router.get(
         "/{id}/cards",
-        response_model=list[CardOut],
+        response_model=CardListOut,
         status_code=status.HTTP_200_OK
 )
 async def read_expansion_cards(id: int, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
 
-    if not get_user_by_id(session, data.id):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden."
-        )
+    # Verifiers
+    verify_user(get_user_by_id(session, data.id)) # Check if the user exists
+    verify_expansion(get_expansion_by_id(session, id)) # Check if the expansion exists
 
-    if not get_expansion_by_id(session, id):
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Expansion not found."
-        )
-
-    return [CardOut(id=c.id, id_expansion=id, name=c.name, rarity=c.rarity, price=c.price/100, card_number=c.card_number, frontcard=c.frontcard, backcard=c.backcard) for c in get_cards_by_expansion(session, id)]
+    return CardListOut(cards=[CardOut(id=c.id, id_expansion=id, name=c.name, rarity=c.rarity, price=c.price/100, card_number=c.card_number, frontcard=c.frontcard, backcard=c.backcard) for c in get_cards_by_expansion(session, id)])
 
 
 

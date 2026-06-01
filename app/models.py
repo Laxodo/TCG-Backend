@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-#TODO: implementar los dto para devolver la informacion para no devolver objetos de la base de datos
 
 #=============== USER ===============
 class UserBase(BaseModel):
@@ -23,6 +22,10 @@ class UserOut(BaseModel):
     is_admin: bool
 
 
+class UserListOut(BaseModel):
+    users: list[UserOut]
+
+
 class EditUser(BaseModel):
     name: str | None
     username: str | None
@@ -35,6 +38,7 @@ class EditUser(BaseModel):
 
 class UserLoginIn(UserBase):
     pass
+
 
 # =============== CARD ===============
 class CardBase(BaseModel):
@@ -50,6 +54,11 @@ class CardBase(BaseModel):
 class CardOut(CardBase):
     id: int
 
+
+class CardListOut(BaseModel):
+    cards: list[CardOut]
+
+
 # =============== EXPANSION ===============
 class ExpansionBase(BaseModel):
     id_generacion: int
@@ -61,6 +70,11 @@ class ExpansionBase(BaseModel):
 class ExpansionOut(ExpansionBase):
     id: int
 
+
+class ExpansionListOut(BaseModel):
+    expansions: list[ExpansionOut]
+
+
 # =============== GENERATION ===============
 class GenerationBase(BaseModel):
     name: str
@@ -69,7 +83,12 @@ class GenerationBase(BaseModel):
 
 class GenerationOut(GenerationBase):
     id: int
-# TODO: terminar los que quedan
+
+
+class GenerationListOut(BaseModel):
+    generations: list[GenerationOut]
+
+
 # =============== USER_CARD ===============
 class UserCardOut(BaseModel):
     id: int
@@ -85,6 +104,10 @@ class UserCardListOut(BaseModel):
     user_cards: list[UserCardOut]
 
 
+class InventoryCardOut(BaseModel):
+    cards: list[UserCardListOut]
+
+
 class CollectionCardOut(BaseModel):
     id_card: int
     card_number: int
@@ -93,11 +116,15 @@ class CollectionCardOut(BaseModel):
     frontcard: str
 
 
+class CollectionListOut(BaseModel):
+    collection: list[CollectionCardOut]
+
+
 class UserCardGradeOut(BaseModel):
     grade: int
 
-# =============== MARKET ===============
 
+# =============== MARKET ===============
 class QuickSellOut(BaseModel):
     total_earn: float
 
@@ -110,17 +137,31 @@ class SellIn(BaseModel):
     price: float
 
 
-class OfferOut(BaseModel):
-    id: int
-    id_user_card: int
-    exchange_type: str
-    price: float
+class ExchangeIn(BaseModel):
     id_card: int
     psa: int | None
 
-# TODO: terminar los que quedan
-# =============== LOGACTIVITY ===============
 
+class OfferOut(BaseModel):
+    id: int
+    id_card: int | None
+    id_user_card: int
+    exchange_type: str
+    image_card_offer: str
+    image_card_demanded: str | None
+    price: float
+    psa: int | None
+
+
+class OfferListOut(BaseModel):
+    offers: list[OfferOut]
+
+
+class BoostedPackOut(BaseModel):
+    booster: list[CardOut]
+
+
+# =============== LOGACTIVITY ===============
 class LogActivityOut(BaseModel):
     id_user: int
     id_card: int
@@ -131,7 +172,6 @@ class LogActivityOut(BaseModel):
 
 
 # =============== LOGHISTORY ===============
-
 class LogHistoryOut(BaseModel):
     id_user: int
     id_card: int
