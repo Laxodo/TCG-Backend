@@ -149,7 +149,8 @@ class OfferOut(BaseModel):
     exchange_type: str
     image_card_offer: str
     image_card_demanded: str | None
-    price: float
+    expansion_name: str
+    price: float | None
     psa: int | None
 
 
@@ -162,19 +163,38 @@ class BoostedPackOut(BaseModel):
 
 
 # =============== LOGACTIVITY ===============
+class LogActivityCardOut(BaseModel):
+    id: int
+    name: str
+    price: float
+    frontcard: str
+
+
 class LogActivityOut(BaseModel):
     id_user: int
-    id_card: int
+    card: LogActivityCardOut | None
     id_log_history: int
     action: str
-    price: int
+    price: float
     psa: int | None
 
 
 # =============== LOGHISTORY ===============
+class LogHistoryUserOut(BaseModel):
+    id: int
+    username: str
+    is_admin: bool
+
+
 class LogHistoryOut(BaseModel):
-    id_user: int
-    id_card: int
-    action: str
-    price: int
-    psa: int | None
+    user: LogHistoryUserOut
+    user_interacted: LogHistoryUserOut | None
+    description: str
+    type: str
+    money_exchange: int
+    date: str
+    activities: list[LogActivityOut]
+
+
+class LogHistoryListOut(BaseModel):
+    logs: list[LogHistoryOut]

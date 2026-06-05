@@ -1,11 +1,11 @@
 from random import randint, choices
-from app.tools.verifiers import verify_expansion, verify_offer, verify_offer_owner, verify_offer_self_owner, verify_user, verify_user_card_for_sale, verify_user_card_owner, verify_user_card_psa_target, verify_user_card_target, verify_user_currency, verify_user_target, verify_user_card
+from app.tools.verifiers import verify_expansion, verify_offer, verify_offer_owner, verify_offer_self_owner, verify_offer_type, verify_user, verify_user_card_for_sale, verify_user_card_owner, verify_user_card_psa_target, verify_user_card_target, verify_user_currency, verify_user_target, verify_user_card
 from app.tools.logs import buy_card_logs, exchange_card_logs, grade_cards_logs
 from fastapi import APIRouter, status, Depends
 from app.models import BoostedPackOut, ExchangeIn, OfferListOut, OfferOut, QuickSellIn, QuickSellOut, SellIn, UserCardGradeOut, CardOut
 from app.auth.auth import decode_token, oauth2_scheme, TokenData
 from app.db.card import PROBABILITIES, RARITY_VARIABLE, Rarity, get_cards_by_expansion_and_rarity
-from app.db.cardmarket import GRADE_COST, CardMarketDB, ExchangeType, create_offer, get_offer_by_id, get_offers, remove_offer
+from app.db.cardmarket import GRADE_COST, CardMarketDB, ExchangeType, create_offer, get_offer_by_id, get_offers, get_offers_by_not_user_id, get_offers_by_user_id, remove_offer
 from app.db.database import get_session
 from app.db.expansion import get_expansion_by_id
 from app.db.logactivity import Action, LogActivityDB, create_log_activity
@@ -33,26 +33,31 @@ async def quick_sell_cards(cards: QuickSellIn, token: str = Depends(oauth2_schem
         session,
         LogHistoryDB(
             id_user=data.id,
-            description=f"Quick sell cards with ids {cards.card_list_id}",
+            description=f"Quick sell cards.",
             type=LogType.QUICK_SELL.value
         )
     )
 
     for c in cards.card_list_id:
         user_card = get_user_card_by_id(session, c)
-        if user_card and user_card.id_user == data.id:
-            total_earn += remove_card(session, c).price
-            create_log_activity(
-                session,
-                LogActivityDB(
-                    id_user=data.id,
-                    id_card=c,
-                    id_log_history=log.id,
-                    action=Action.LOST.value,
-                    price=user_card.price,
-                    psa=user_card.psa
+        try:
+            verify_user_card_for_sale(user_card.sold) # Check if the target user card is for sale
+            if user_card and user_card.id_user == data.id:
+                total_earn += remove_card(session, c).price
+                create_log_activity(
+                    session,
+                    LogActivityDB(
+                        id_user=data.id,
+                        id_card=c,
+                        id_log_history=log.id,
+                        action=Action.LOST.value,
+                        price=user_card.price,
+                        psa=user_card.psa
+                    )
                 )
-            )
+        except:
+            continue
+        
 
     update_user(session=session, id=data.id, money=user.money+total_earn)
     return QuickSellOut(total_earn=total_earn/100)
@@ -71,7 +76,7 @@ async def sell_card(id: int, card: SellIn, token: str = Depends(oauth2_scheme), 
     verify_user_card_owner(user_card.id_user, data.id) # Check if the user card is owned by the user
     verify_user_card_for_sale(user_card.sold) # Check if the target user card is for sale
 
-    create_offer(session, CardMarketDB(id_user=data.id, id_user_card=user_card.id, exchange_type=ExchangeType.on_sale.value, price=int(card.price*100)))
+    create_offer(session, CardMarketDB(id_user=data.id, id_user_card=user_card.id, exchange_type=ExchangeType.sale.value, price=int(card.price*100)))
     update_user_card(session, id, sold=True)
 
 
@@ -87,11 +92,11 @@ async def buy_card(id: int, token: str = Depends(oauth2_scheme), session = Depen
     user_seller = verify_user_target(get_user_by_id(session, user_card_offer.id_user)) # Check if the seller exists
 
     #Verifiers
-    verify_user_card_for_sale(user_card_offer.sold) # Check if the target user card is for sale
+    verify_user_card_for_sale(not user_card_offer.sold) # Check if the target user card is for sale
     verify_offer_self_owner(user_buyer.id, offer.id_user) # Check if the user is the owner of the offer
 
     # Check if the offer is a sale
-    if offer.exchange_type == ExchangeType.on_sale.value:
+    if offer.exchange_type == ExchangeType.sale.value:
         # Check if the user have enough money
         verify_user_currency(user_buyer.money, offer.price)
 
@@ -105,7 +110,7 @@ async def buy_card(id: int, token: str = Depends(oauth2_scheme), session = Depen
         buy_card_logs(session, user_buyer, user_seller, user_card_offer, data, offer)
 
     # Check if the offer is an exchange
-    if offer.exchange_type == ExchangeType.on_exchange.value:
+    if offer.exchange_type == ExchangeType.exchange.value:
         demanded_card = verify_user_card_target(get_user_card_by_card_id(session, data.id, offer.id_card, offer.psa)) # Check if the user have the demanded card
 
         # Verifiers
@@ -127,11 +132,22 @@ async def buy_card(id: int, token: str = Depends(oauth2_scheme), session = Depen
     status_code=status.HTTP_200_OK,
     response_model=OfferListOut
 )
-async def read_offer(token: str = Depends(oauth2_scheme), session = Depends(get_session)):
+async def read_offer(id_user: int | None = None, type: str | None = None, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
 
     # Check if the user exists
     verify_user(get_user_by_id(session, data.id))
+    verify_user_target(get_user_by_id(session, id_user)) if id_user else None
+    verify_offer_type(type)
+
+    offers = []
+
+    if id_user and not data.is_admin:
+        offers = get_offers_by_user_id(session, id_user, type)
+    if not id_user and not data.is_admin:
+        offers = get_offers_by_not_user_id(session, data.id, type)
+    if data.is_admin:
+        offers = get_offers(session)
 
     return OfferListOut(
         offers=[
@@ -141,11 +157,12 @@ async def read_offer(token: str = Depends(oauth2_scheme), session = Depends(get_
                 id_user_card=offer.id_user_card, 
                 exchange_type=offer.exchange_type, 
                 image_card_offer=offer.user_card.card.frontcard if offer.user_card and offer.user_card.card else None, 
-                image_card_demanded=offer.card.frontcard if offer.card else None, 
-                price=offer.price/100, 
+                image_card_demanded=offer.card.frontcard if offer.card else None,
+                expansion_name=offer.user_card.card.expansion.name,
+                price=offer.price/100 if offer.price else None, 
                 psa=offer.psa
             ) 
-            for offer in get_offers(session)
+            for offer in offers
         ]
     )
 
@@ -161,7 +178,19 @@ async def read_offer_by_id(id: int, token: str = Depends(oauth2_scheme), session
     # Check if the user exists
     verify_user(get_user_by_id(session, data.id))
 
-    return get_offer_by_id(session, id)
+    offer = get_offer_by_id(session, id)
+
+    return OfferOut(
+        id=offer.id, 
+        id_card=offer.id_card, 
+        id_user_card=offer.id_user_card, 
+        exchange_type=offer.exchange_type, 
+        image_card_offer=offer.user_card.card.frontcard if offer.user_card and offer.user_card.card else None, 
+        image_card_demanded=offer.card.frontcard if offer.card else None,
+        expansion_name=offer.user_card.card.expansion.name,
+        price=offer.price/100 if offer.price else None, 
+        psa=offer.psa
+    ) 
 
 
 @router.delete(
@@ -190,11 +219,12 @@ async def exchange_card(id: int, target: ExchangeIn, token: str = Depends(oauth2
     data: TokenData = decode_token(token)
     user_card = verify_user_card(get_user_card_by_id(session, id)) # Check if the user card exists
 
-    # Check if the user exists
-    verify_user(get_user_by_id(session, data.id)) 
+    # Verifiers
+    verify_user_card_owner(user_card.id_user, data.id) # Check if the user card is owned by the user
+    verify_user(get_user_by_id(session, data.id)) # Check if the user exists
 
     # Update database
-    create_offer(session, CardMarketDB(id_user=data.id, id_user_card=user_card.id, id_card=target.id_card, psa=target.psa, exchange_type=ExchangeType.on_exchange.value))
+    create_offer(session, CardMarketDB(id_user=data.id, id_user_card=user_card.id, id_card=target.id_card, psa=target.psa, exchange_type=ExchangeType.exchange.value))
     update_user_card(session, id, sold=True)
 
 

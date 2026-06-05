@@ -1,6 +1,7 @@
 from fastapi import FastAPI, status, Depends
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from fastapi_pagination import add_pagination
 from app.routers import users, card, expansions, generations, media, market
 from app.db.database import create_database_and_tables, create_admin_user
 from app.auth.auth import get_hash_password 
@@ -13,6 +14,7 @@ app.include_router(generations.router)
 app.include_router(media.router)
 app.include_router(market.router)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+add_pagination(app)
 
 @app.on_event("startup")
 async def on_startup():

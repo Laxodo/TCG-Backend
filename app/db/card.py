@@ -1,29 +1,6 @@
-from sqlmodel import SQLModel, Field, Session, select, Relationship
+from app.db.models import CardDB
+from sqlmodel import Session, select
 from enum import Enum
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .card import CardDB
-    from .logactivity import LogActivityDB
-    from .cardmarket import CardMarketDB
-    from .usercard import UserCardDB
-    from .expansion import ExpansionDB
-
-class CardDB(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    id_expansion: int = Field(index=True, foreign_key="expansiondb.id")
-    name: str = Field(index=True)
-    rarity: str = Field(index=True)
-    price: int = Field(index=True)
-    card_number: int = Field(index=True)
-    frontcard: str = Field(index=True)
-    backcard: str = Field(index=True)
-
-    user_cards: list["UserCardDB"] = Relationship(back_populates="card")
-    card_market: list["CardMarketDB"] = Relationship(back_populates="card")
-    log_activity: list["LogActivityDB"] = Relationship(back_populates="card")
-    expansion: "ExpansionDB" = Relationship(back_populates="cards")
-
 
 class Rarity(Enum):
     common = "Common"

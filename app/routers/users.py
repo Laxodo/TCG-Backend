@@ -1,12 +1,15 @@
-from app.models import CollectionCardOut, CollectionListOut, InventoryCardOut, UserIn, UserListOut, UserOut, EditUser
+from app.models import CollectionCardOut, CollectionListOut, InventoryCardOut, LogHistoryOut, UserIn, UserListOut, UserOut, EditUser
+from app.tools.mappers import history_to_dto
 from app.tools.verifiers import verify_expansion, verify_user, verify_user_admin, verify_user_email, verify_user_target, verify_user_username
 from fastapi import APIRouter, status, HTTPException, Depends
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi_pagination import Page, paginate
 from app.auth.auth import Token, create_access_token, verify_password, get_hash_password, decode_token, oauth2_scheme, TokenData
 from app.tools.tools import get_formated_user_card
 from app.db.database import get_session
 from app.db.expansion import get_expansion_by_id
 from app.db.user import UserDB, get_user_by_email, get_user_by_id, get_user_by_username, get_users, insert_user, remove_user_by_id, update_user
+from app.db.loghistory import get_log_history_by_id, get_log_history_by_user_id
 
 
 router = APIRouter(
@@ -110,7 +113,7 @@ async def read_user(id: int, token: str = Depends(oauth2_scheme), session = Depe
     status_code=status.HTTP_200_OK,
     response_model=UserOut
 )
-async def patch_user(id: int, user: EditUser, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
+async def patch_user(id: int, user_data: EditUser, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
 
     # Verifiers
@@ -118,8 +121,17 @@ async def patch_user(id: int, user: EditUser, token: str = Depends(oauth2_scheme
     verify_user_admin(user.is_admin) # Check if the user is admin
     verify_user_target(get_user_by_id(session, id)) # Check if the target user exists
 
-    user.money = int(user.money*100) if user.money is not None else user.money
-    updated_user = update_user(session, id, **user.model_dump())
+    updated_user = update_user(
+        session=session,
+        id=id,
+        name=user_data.name,
+        username=user_data.username,
+        email=user_data.email,
+        money=int(user_data.money*100) if user_data.money is not None else None,
+        opened_boosters=user_data.opened_boosters,
+        exchanges=user_data.exchanges,
+        is_admin=user_data.is_admin
+    )
 
     return UserOut(
             id = updated_user.id, 
@@ -184,5 +196,42 @@ async def read_collection(id: int, expansion: int, token: str = Depends(oauth2_s
     verify_expansion(get_expansion_by_id(session, expansion)) # Check if the expansion exists
 
     return CollectionListOut(
-        collection=[CollectionCardOut(id_card=c.id, card_number=c.card_number, card_name=c.card.name, quantity=len(c.user_cards), frontcard=c.card.frontcard) for c in get_formated_user_card(session, id, expansion, -1, -1)]
+        collection=[
+            CollectionCardOut(
+                id_card=c.card.id, 
+                card_number=c.card.card_number, 
+                card_name=c.card.name, 
+                quantity=len(c.user_cards), 
+                frontcard=c.card.frontcard) 
+                for c in get_formated_user_card(session, id, expansion, -1, -1)
+            ]
     )
+
+
+@router.get(
+    "/{id}/logs",
+    status_code=status.HTTP_200_OK,
+    response_model=Page[LogHistoryOut]
+)
+async def read_user_logs(id: int, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
+    data: TokenData = decode_token(token)
+
+    # Verifiers
+    verify_user_target(get_user_by_id(session, id)) # Check if the target user exists
+    verify_user_admin(data.is_admin) # Check if the user is admin
+
+    return paginate([history_to_dto(log) for log in get_log_history_by_user_id(session, id)])
+
+
+@router.get(
+    "/{id}/logs/{log_id}",
+    status_code=status.HTTP_200_OK
+)
+async def read_user_logs(id: int, log_id: int, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
+    data: TokenData = decode_token(token)
+
+    # Verifiers
+    verify_user_target(get_user_by_id(session, id)) # Check if the target user exists
+    verify_user_admin(data.is_admin) # Check if the user is admin
+
+    return history_to_dto(get_log_history_by_id(session, log_id))

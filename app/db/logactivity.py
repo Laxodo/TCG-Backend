@@ -1,27 +1,6 @@
-from sqlmodel import SQLModel, Field, Session, select, Relationship
+from app.db.models import LogActivityDB
+from sqlmodel import Session, select
 from enum import Enum
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .user import UserDB
-    from .card import CardDB
-    from .loghistory import LogHistoryDB
-    from .logactivity import LogActivityDB
-    
-
-class LogActivityDB(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    id_user: int = Field(index=True, foreign_key="userdb.id")
-    id_card: int = Field(index=True, foreign_key="carddb.id")
-    id_log_history: int = Field(index=True, foreign_key="loghistorydb.id")
-    action: str = Field(index=True)
-    price: int = Field(index=True)
-    psa: int | None = Field(index=True)
-
-    user: "UserDB" = Relationship(back_populates="log_activity")
-    card: "CardDB" = Relationship(back_populates="log_activity")
-    log_history: "LogHistoryDB" = Relationship(back_populates="log_activity")
-
 
 class Action(Enum):
     GET = "get"
@@ -35,7 +14,12 @@ def create_log_activity(session: Session, log_activity: LogActivityDB) -> LogAct
 
 
 def get_log_activity(session: Session) -> list[LogActivityDB]:
-    return session.exec(select(LogActivityDB)).all()
+    statement = select(LogActivityDB).options(
+        joinedload(LogActivityDB.user),
+        joinedload(LogActivityDB.user_card),
+        joinedload(LogActivityDB.log_history)
+    )
+    return session.exec(statement).all()
 
 
 def get_log_activity_by_id(session: Session, id: int) -> LogActivityDB:
