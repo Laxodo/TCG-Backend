@@ -1,6 +1,7 @@
 from app.db.cardmarket import GRADE_COST
 from app.db.loghistory import LogHistoryDB, create_log_history, LogType
 from app.db.logactivity import LogActivityDB, create_log_activity, Action
+from app.db.models import UserCardDB, UserDB
 
 
 def grade_cards_logs(session, id_user, user_card, psa, price):
@@ -38,7 +39,7 @@ def grade_cards_logs(session, id_user, user_card, psa, price):
     )
 
 
-def exchange_card_logs(session, user_buyer, user_seller, demanded_card, user_card_offer, data):
+def exchange_card_logs(session, user_buyer: UserDB, user_seller: UserDB, demanded_card: UserCardDB, user_card_offer: UserCardDB, data):
     user_buyer_log = create_log_history(
             session,
             LogHistoryDB(

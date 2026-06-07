@@ -1,4 +1,4 @@
-from app.db.models import LogHistoryDB
+from app.db.models import LogHistoryDB, LogActivityDB
 from app.models import LogActivityCardOut, LogActivityOut, LogHistoryOut, LogHistoryUserOut
 
 
@@ -16,17 +16,17 @@ def history_to_dto(log: LogHistoryDB) -> LogHistoryOut:
             ) if log.user_interacted else None,
             description=log.description,
             type=log.type,
-            money_exchange=log.money_exchange,
+            money_exchange=log.money_exchange/100,
             date=log.date,
             activities=[
                 LogActivityOut(
                     id_user=activity.user.id,
                     card=LogActivityCardOut(
-                        id=activity.user_card.card.id,
-                        name=activity.user_card.card.name,
-                        price=activity.user_card.card.price/100,
-                        frontcard=activity.user_card.card.frontcard
-                    ) if activity.user_card else None,
+                        id=activity.card.id,
+                        name=activity.card.name,
+                        price=activity.card.price/100,
+                        frontcard=activity.card.frontcard
+                    ) if activity.card else None,
                     id_log_history=activity.log_history.id,
                     action=activity.action,
                     price=activity.price/100,

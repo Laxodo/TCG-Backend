@@ -8,8 +8,8 @@ from fastapi import APIRouter, status, Depends
 from app.auth.auth import decode_token, oauth2_scheme, TokenData
 
 router = APIRouter(
-    prefix = "/generation",
-    tags = ["Generation"]
+    prefix = "/generations",
+    tags = ["Generations"]
 )
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
@@ -72,4 +72,4 @@ async def read_generation_expansions(id: int, token = Depends(oauth2_scheme), se
     verify_user(get_user_by_id(session, data.id)) # Check if the user exists
     verify_generation(get_generation_by_id(session, id)) # Check if the generation exists
 
-    return ExpansionListOut(expansions=[ExpansionOut(id=e.id, id_generacion=id, name=e.name, year=e.year) for e in get_expansion_by_generation(session, id)])
+    return ExpansionListOut(expansions=[ExpansionOut(id=e.id, id_generacion=id, price=e.price, name=e.name, year=e.year) for e in get_expansion_by_generation(session, id)])

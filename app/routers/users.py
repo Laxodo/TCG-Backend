@@ -3,7 +3,7 @@ from app.tools.mappers import history_to_dto
 from app.tools.verifiers import verify_expansion, verify_user, verify_user_admin, verify_user_email, verify_user_target, verify_user_username
 from fastapi import APIRouter, status, HTTPException, Depends
 from fastapi.security import OAuth2PasswordRequestForm
-from fastapi_pagination import Page, paginate
+from fastapi_pagination import Page
 from app.auth.auth import Token, create_access_token, verify_password, get_hash_password, decode_token, oauth2_scheme, TokenData
 from app.tools.tools import get_formated_user_card
 from app.db.database import get_session
@@ -220,7 +220,7 @@ async def read_user_logs(id: int, token: str = Depends(oauth2_scheme), session =
     verify_user_target(get_user_by_id(session, id)) # Check if the target user exists
     verify_user_admin(data.is_admin) # Check if the user is admin
 
-    return paginate([history_to_dto(log) for log in get_log_history_by_user_id(session, id)])
+    return get_log_history_by_user_id(session, id)
 
 
 @router.get(

@@ -48,7 +48,7 @@ async def quick_sell_cards(cards: QuickSellIn, token: str = Depends(oauth2_schem
                     session,
                     LogActivityDB(
                         id_user=data.id,
-                        id_card=c,
+                        id_card=user_card.id_card,
                         id_log_history=log.id,
                         action=Action.LOST.value,
                         price=user_card.price,
@@ -282,7 +282,8 @@ async def open_boosted_pack(id: int, token: str = Depends(oauth2_scheme), sessio
         LogHistoryDB(
             id_user=data.id,
             description=f"Opened boosted pack with id {expansion.id}",
-            type=LogType.OPEN_BOOSTER.value
+            type=LogType.OPEN_BOOSTER.value,
+            money_exchange = -expansion.price
         )
     )
 
