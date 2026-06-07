@@ -1,22 +1,5 @@
-from sqlmodel import SQLModel, Field, Session, select, Relationship
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .card import CardDB
-    from .generation import GenerationDB
-    from .expansion import ExpansionDB
-
-    
-
-class ExpansionDB(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    id_generation: int = Field(index=True, foreign_key="generationdb.id")
-    name: str = Field(index=True)
-    price: int = Field(index=True)
-    year: int = Field(index=True)
-
-    generation: "GenerationDB" = Relationship(back_populates="expansions")
-    cards: list["CardDB"] = Relationship(back_populates="expansion")
+from app.db.models import ExpansionDB
+from sqlmodel import Session, select
 
 
 def insert_expansion(session: Session, expansion):

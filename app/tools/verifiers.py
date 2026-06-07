@@ -1,5 +1,5 @@
 from app.db.card import CardDB
-from app.db.cardmarket import CardMarketDB
+from app.db.cardmarket import CardMarketDB, ExchangeType
 from app.db.expansion import ExpansionDB
 from app.db.generation import GenerationDB
 from app.db.user import UserDB
@@ -186,4 +186,12 @@ def verify_offer_self_owner(offer_user_id: int, user_id: int):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot buy your own offer."
+        )
+    
+
+def verify_offer_type(type: str):
+    if type and type not in [e.value for e in ExchangeType]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid offer type."
         )

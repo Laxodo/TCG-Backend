@@ -1,24 +1,6 @@
-from sqlmodel import SQLModel, Field, Session, select, Relationship, col
-from typing import TYPE_CHECKING, Optional
-
-if TYPE_CHECKING:
-    from .user import UserDB
-    from .card import CardDB
-    from .cardmarket import CardMarketDB
-    from .usercard import UserCardDB
-
-
-class UserCardDB(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    id_user: int = Field(index=True, foreign_key="userdb.id")
-    price: int = Field(index=True)
-    psa: int | None = Field(index=True)
-    sold: bool = Field(index=True, default=False)
-
-    id_card: int = Field(default=None, foreign_key="carddb.id")
-    card: Optional["CardDB"] = Relationship(back_populates="user_cards")
-    user: Optional["UserDB"] = Relationship(back_populates="user_cards")
-    card_market: list["CardMarketDB"] = Relationship(back_populates="user_card")
+from app.db.models import UserCardDB
+from sqlmodel import Session, select, col
+from .card import CardDB
 
 
 def create_user_card(session: Session, user_card) -> None:

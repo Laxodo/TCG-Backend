@@ -1,37 +1,13 @@
-from sqlmodel import SQLModel, Field, Session, select, Relationship
+from app.db.models import CardMarketDB
+from sqlmodel import Session, select
 from enum import Enum
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .user import UserDB
-    from .card import CardDB
-    from .cardmarket import CardMarketDB
-    from .usercard import UserCardDB
-
-    
-# =============== MARKET ===============
-
-class CardMarketDB(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    id_user: int = Field(index=True, foreign_key="userdb.id") # User that offers the card
-    id_user_card: int = Field(index=True, foreign_key="usercarddb.id") # Offer card
-    id_card: int | None = Field(index=True, foreign_key="carddb.id") # Demanded card
-    psa: int | None = Field(default=None, index=True) # Demanded card psa
-
-    exchange_type: str = Field(index=True) # For sale or exchange
-    price: int | None = Field(default=None, index=True) # For sale price
-
-    user: "UserDB" = Relationship(back_populates="card_market")
-    user_card: "UserCardDB" = Relationship(back_populates="card_market")
-    card: "CardDB" = Relationship(back_populates="card_market")
-
-
-class ExchangeType(Enum):
-    on_sale = "on_sale"
-    on_exchange = "on_exchange"
-
 
 GRADE_COST: int = 2500
+
+class ExchangeType(Enum):
+    sale = "sell"
+    exchange = "exchange"
+
 
 def create_offer(session: Session, card: CardMarketDB) -> CardMarketDB:
     session.add(card)
@@ -50,3 +26,17 @@ def get_offers(session: Session) -> list[CardMarketDB]:
 
 def get_offer_by_id(session: Session, id: int) -> CardMarketDB:
     return session.get(CardMarketDB, id)
+
+
+def get_offers_by_user_id(session: Session, id_user: int, type: str | None = None) -> list[CardMarketDB]:
+    statement = select(CardMarketDB).where(CardMarketDB.id_user == id_user)
+    if type in [e.value for e in ExchangeType]:
+        statement = statement.where(CardMarketDB.exchange_type == type)
+    return session.exec(statement).all()
+
+
+def get_offers_by_not_user_id(session: Session, id_user: int, type: str | None = None) -> list[CardMarketDB]:
+    statement = select(CardMarketDB).where(CardMarketDB.id_user != id_user)
+    if type in [e.value for e in ExchangeType]:
+        statement = statement.where(CardMarketDB.exchange_type == type)
+    return session.exec(statement).all()
