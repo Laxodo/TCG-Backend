@@ -1,3 +1,4 @@
+from app.auth.auth import TokenData
 from app.db.card import CardDB
 from app.db.cardmarket import CardMarketDB, ExchangeType
 from app.db.expansion import ExpansionDB
@@ -41,6 +42,14 @@ def verify_user_admin(user_admin: bool):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Forbidden."
+        )
+
+
+def verify_user_admin_or_self(data: TokenData, id: int):
+    if data.id is not id and not data.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden.",
         )
 
 

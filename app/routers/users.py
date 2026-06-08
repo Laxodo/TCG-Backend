@@ -1,6 +1,6 @@
 from app.models import CollectionCardOut, CollectionListOut, InventoryCardOut, LogHistoryOut, UserIn, UserListOut, UserOut, EditUser
 from app.tools.mappers import history_to_dto
-from app.tools.verifiers import verify_expansion, verify_user, verify_user_admin, verify_user_email, verify_user_target, verify_user_username
+from app.tools.verifiers import verify_expansion, verify_user, verify_user_admin, verify_user_admin_or_self, verify_user_email, verify_user_target, verify_user_username
 from fastapi import APIRouter, status, HTTPException, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi_pagination import Page
@@ -87,12 +87,9 @@ async def read_all_users(token: str = Depends(oauth2_scheme), session = Depends(
 async def read_user(id: int, token: str = Depends(oauth2_scheme), session = Depends(get_session)):
     data: TokenData = decode_token(token)
 
-    # Check if the user exists and if the user is admin or if the user is the same as the target user
-    if not get_user_by_id(session, data.id) or data.id is not id and not data.is_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden.",
-        )
+    # Verifiers
+    verify_user(get_user_by_id(session, data.id)) # Check if the user exists
+    verify_user_admin_or_self(data, id) # Check if the user is admin or if the user is the same as the target user
 
     user_target = verify_user_target(get_user_by_id(session, id)) # Check if the target user exists
     
@@ -117,9 +114,8 @@ async def patch_user(id: int, user_data: EditUser, token: str = Depends(oauth2_s
     data: TokenData = decode_token(token)
 
     # Verifiers
-    user = verify_user(get_user_by_id(session, data.id)) # Check if the user exists
-    verify_user_admin(user.is_admin) # Check if the user is admin
-    verify_user_target(get_user_by_id(session, id)) # Check if the target user exists
+    verify_user(get_user_by_id(session, data.id)) # Check if the user exists
+    verify_user_admin_or_self(data, id) # Check if the user is admin or if the user is the same as the target user
 
     updated_user = update_user(
         session=session,
