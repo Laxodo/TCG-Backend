@@ -72,4 +72,4 @@ async def read_generation_expansions(id: int, token = Depends(oauth2_scheme), se
     verify_user(get_user_by_id(session, data.id)) # Check if the user exists
     verify_generation(get_generation_by_id(session, id)) # Check if the generation exists
 
-    return ExpansionListOut(expansions=[ExpansionOut(id=e.id, id_generacion=id, name=e.name, year=e.year) for e in get_expansion_by_generation(session, id)])
+    return ExpansionListOut(expansions=[ExpansionOut(id=e.id, id_generacion=id, name=e.name, price=e.price / 100, year=e.year) for e in get_expansion_by_generation(session, id)])
